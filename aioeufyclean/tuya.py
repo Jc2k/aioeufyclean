@@ -631,25 +631,28 @@ class TuyaDevice:
         }
         self._dps = {}
         self._connected = False
+        self._connecting_lock = asyncio.Lock()
 
     def __str__(self):
         return f"{self.device_id} ({self.host}:{self.port})"
 
     async def async_connect(self, callback=None):
-        if self._connected:
-            return
-        try:
-            self.reader, self.writer = await asyncio.wait_for(
-                asyncio.open_connection(host=self.host, port=self.port), self.timeout
-            )
-        except TimeoutError as e:
-            raise ConnectionTimeoutException("Connection timed out") from e
+        async with self._connecting_lock:
+            if self._connected:
+                return
 
-        self._connected = True
+            try:
+                self.reader, self.writer = await asyncio.wait_for(
+                    asyncio.open_connection(host=self.host, port=self.port), self.timeout
+                )
+            except TimeoutError as e:
+                raise ConnectionTimeoutException("Connection timed out") from e
 
-        asyncio.ensure_future(self._async_handle_message())
-        asyncio.ensure_future(self._async_ping())
-        asyncio.ensure_future(self.async_get(callback))
+            self._connected = True
+
+            asyncio.ensure_future(self._async_handle_message())
+            asyncio.ensure_future(self._async_ping())
+            asyncio.ensure_future(self.async_get(callback))
 
     async def async_disconnect(self):
         _LOGGER.debug(f"Disconnected from {self}")
