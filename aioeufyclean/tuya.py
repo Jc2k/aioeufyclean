@@ -594,15 +594,6 @@ class Message:
         return cls(command, payload, sequence)
 
 
-def _call_async(fn, *args):
-    loop = asyncio.get_event_loop()
-
-    def wrapper(fn, *args):
-        asyncio.ensure_future(fn(*args))
-
-    loop.call_soon(wrapper, fn, *args)
-
-
 class TuyaDevice:
     """Represents a generic Tuya device."""
 
@@ -680,9 +671,6 @@ class TuyaDevice:
         payload = {"devId": self.device_id, "uid": "", "t": t, "dps": dps}
         message = Message(Message.SET_COMMAND, payload, encrypt_for=self)
         await message.async_send(self, callback)
-
-    def set(self, dps):
-        _call_async(self.async_set, dps)
 
     async def _async_ping(self):
         self.last_ping = time.time()
