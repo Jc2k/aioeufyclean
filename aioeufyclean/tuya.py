@@ -50,6 +50,14 @@ from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 from cryptography.hazmat.primitives.hashes import MD5, Hash
 from cryptography.hazmat.primitives.padding import PKCS7
 
+from .exceptions import (
+    ConnectionException,
+    ConnectionTimeoutException,
+    InvalidKey,
+    InvalidMessage,
+    MessageDecodeFailed,
+)
+
 _LOGGER = logging.getLogger(__name__)
 
 MESSAGE_PREFIX_FORMAT = ">IIII"
@@ -315,34 +323,6 @@ CRC_32_TABLE = [
     0x5A05DF1B,
     0x2D02EF8D,
 ]
-
-
-class TuyaException(Exception):
-    """Base for Tuya exceptions."""
-
-
-class InvalidKey(TuyaException):
-    """The local key is invalid."""
-
-
-class InvalidMessage(TuyaException):
-    """The message received is invalid."""
-
-
-class MessageDecodeFailed(TuyaException):
-    """The message received cannot be decoded as JSON."""
-
-
-class ConnectionException(TuyaException):
-    """The socket connection failed."""
-
-
-class ConnectionTimeoutException(ConnectionException):
-    """The socket connection timed out."""
-
-
-class RequestResponseCommandMismatch(TuyaException):
-    """The command in the response didn't match the one from the request."""
 
 
 class TuyaCipher:

@@ -220,5 +220,5 @@ class TuyaAPISession:
     async def list_homes(self):
         return await self._request(action="tuya.m.location.list", version="2.1")
 
-    def get_device(self, devId):
-        return self._request(action="tuya.m.device.get", version="1.0", data={"devId": devId})
+    def get_device(self, device_id: str):
+        return self._request(action="tuya.m.device.get", version="1.0", data={"devId": device_id})
