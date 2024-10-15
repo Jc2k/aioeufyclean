@@ -70,7 +70,7 @@ class ErrorCode(StrEnum):
     S_BRUSH_STUCK = "S_brush_stuck"
 
 
-class Robovac(TuyaDevice):
+class VacuumDevice(TuyaDevice):
     """Represents a generic Eufy Robovac."""
 
     POWER = "1"
