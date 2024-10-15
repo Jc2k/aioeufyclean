@@ -16,13 +16,11 @@ import enum
 
 
 class StringEnum(enum.Enum):
-
     def __str__(self):
         return self.value
 
 
 class DeviceProperty:
-
     def __init__(self, key, type_cast=None, read_only=False):
         self.key = key
         self.type_cast = type_cast
@@ -41,4 +39,3 @@ class DeviceProperty:
         if not isinstance(value, (bool, int, float, str, type(None))):
             value = str(value)
         instance.set({self.key: value})
-

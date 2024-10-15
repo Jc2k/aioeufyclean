@@ -114,4 +114,3 @@ class Robovac(TuyaDevice):
 
     async def async_set_clean_speed(self, clean_speed, callback=None):
         await self.async_set({self.CLEAN_SPEED: str(clean_speed)}, callback)
-
