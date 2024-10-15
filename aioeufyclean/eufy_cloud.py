@@ -66,7 +66,7 @@ async def get_cloud_vacuums(
     if user_info_resp.status != 200:
         raise ConnectionFailed
 
-    user_info = user_info_resp.json()
+    user_info = await user_info_resp.json()
 
     if user_info["res_code"] != 1:
         raise AuthenticationFailed
@@ -79,13 +79,13 @@ async def get_cloud_vacuums(
         host + "/v1/device/list/devices-and-groups",
         headers={**EUFY_HEADERS, "token": access_token, "id": user_id},
     )
-    device_info = device_info_resp.json()
+    device_info = await device_info_resp.json()
 
     user_settings_resp = await session.get(
         host + "/v1/user/setting",
         headers={**EUFY_HEADERS, "token": access_token, "id": user_id},
     )
-    user_settings = user_settings_resp.json()
+    user_settings = await user_settings_resp.json()
 
     if (
         "tuya_home" in user_settings["setting"]["home_setting"]
@@ -109,6 +109,7 @@ async def get_cloud_vacuums(
     time_zone = user_info["user_info"]["timezone"]
 
     tuya_client = TuyaAPISession(
+        session,
         username="eh-" + user_id,
         region=region,
         timezone=time_zone,

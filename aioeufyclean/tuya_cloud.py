@@ -84,17 +84,29 @@ DEFAULT_TUYA_QUERY_PARAMS = {
 
 
 class TuyaAPISession:
-    username = None
-    country_code = None
     session_id = None
 
-    def __init__(self, session: aiohttp.ClientSession, username: str, country_code: str):
+    def __init__(
+        self,
+        session: aiohttp.ClientSession,
+        username: str,
+        region: str,
+        timezone: str,
+        phone_code: str,
+    ):
+        self.session = session
         self.headers = DEFAULT_TUYA_HEADERS.copy()
         self.default_query_params = DEFAULT_TUYA_QUERY_PARAMS.copy()
         self.default_query_params["deviceId"] = self.generate_new_device_id()
+        self.default_query_params["timeZoneId"] = timezone
         self.username = username
-        self.country_code = country_code
-        self.base_url = TUYA_INITIAL_BASE_URL
+        self.country_code = phone_code
+        self.base_url = {
+            "AZ": "https://a1.tuyaus.com",
+            "AY": "https://a1.tuyacn.com",
+            "IN": "https://a1.tuyain.com",
+            "EU": "https://a1.tuyaeu.com",
+        }.get(region, "https://a1.tuyaeu.com")
 
     @staticmethod
     def generate_new_device_id() -> str:
@@ -133,7 +145,7 @@ class TuyaAPISession:
         _requires_session=True,
     ):
         if not self.session_id and _requires_session:
-            self.acquire_session()
+            await self.acquire_session()
 
         current_time = time.time()
         request_id = uuid.uuid4()
@@ -148,14 +160,15 @@ class TuyaAPISession:
         encoded_post_data = json.dumps(data, separators=(",", ":")) if data else ""
         resp = await self.session.post(
             self.base_url + "/api.json",
+            headers=self.headers,
             params={
                 **query_params,
                 "sign": self.get_signature(query_params, encoded_post_data),
             },
             data={"postData": encoded_post_data} if encoded_post_data else None,
+            raise_for_status=True,
         )
-        resp.raise_for_status()
-        data = resp.json()
+        data = await resp.json()
         if "result" not in data:
             raise Exception(f"No 'result' key in the response - the entire response is {data}.")
         return data["result"]
@@ -207,9 +220,5 @@ class TuyaAPISession:
     async def list_homes(self):
         return await self._request(action="tuya.m.location.list", version="2.1")
 
-    async def list_devices(self, home_id: str):
-        return await self._request(
-            action="tuya.m.my.group.device.list",
-            version="1.0",
-            query_params={"gid": home_id},
-        )
+    def get_device(self, devId):
+        return self._request(action="tuya.m.device.get", version="1.0", data={"devId": devId})
