@@ -12,13 +12,6 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
-import enum
-
-
-class StringEnum(enum.Enum):
-    def __str__(self):
-        return self.value
-
 
 class DeviceProperty:
     def __init__(self, key, type_cast=None, read_only=False):

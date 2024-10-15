@@ -13,14 +13,15 @@
 # limitations under the License.
 
 import logging
+from enum import StrEnum
 
-from .property import DeviceProperty, StringEnum
+from .property import DeviceProperty
 from .tuya import TuyaDevice
 
 _LOGGER = logging.getLogger(__name__)
 
 
-class WorkMode(StringEnum):
+class WorkMode(StrEnum):
     AUTO = "auto"
     NO_SWEEP = "Nosweep"
     SMALL_ROOM = "SmallRoom"
@@ -28,14 +29,14 @@ class WorkMode(StringEnum):
     SPOT = "Spot"
 
 
-class Direction(StringEnum):
+class Direction(StrEnum):
     LEFT = "left"
     RIGHT = "right"
     FORWARD = "forward"
     BACKWARD = "backward"
 
 
-class WorkStatus(StringEnum):
+class WorkStatus(StrEnum):
     # Cleaning
     RUNNING = "Running"
     # In the dock, charging
@@ -50,14 +51,14 @@ class WorkStatus(StringEnum):
     COMPLETED = "completed"
 
 
-class CleanSpeed(StringEnum):
+class CleanSpeed(StrEnum):
     NO_SUCTION = "No_suction"
     STANDARD = "Standard"
     BOOST_IQ = "Boost_IQ"
     MAX = "Max"
 
 
-class ErrorCode(StringEnum):
+class ErrorCode(StrEnum):
     NO_ERROR = "no_error"
     WHEEL_STUCK = "Wheel_stuck"
     R_BRUSH_STUCK = "R_brush_stuck"

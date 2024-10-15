@@ -355,8 +355,8 @@ class TuyaCipher:
         self.key = key
         self.cipher = Cipher(
             algorithms.AES(key.encode("ascii")),
-            modes.ECB(),
-            backend=openssl_backend,  # noqa: S305
+            modes.ECB(),  # noqa: S305
+            backend=openssl_backend,
         )
 
     def get_prefix_size_and_validate(self, command, encrypted_data):
