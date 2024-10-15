@@ -43,7 +43,7 @@ import json
 import logging
 import struct
 import time
-from typing import Self
+from typing import Any, Self
 
 from cryptography.hazmat.backends.openssl import backend as openssl_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -348,7 +348,7 @@ class RequestResponseCommandMismatch(TuyaException):
 class TuyaCipher:
     """Tuya cryptographic helpers."""
 
-    def __init__(self, key, version):
+    def __init__(self, key: str, version: tuple[int, int]):
         """Initialize the cipher."""
         self.version = version
         self.key = key
@@ -358,7 +358,7 @@ class TuyaCipher:
             backend=openssl_backend,
         )
 
-    def get_prefix_size_and_validate(self, command, encrypted_data):
+    def get_prefix_size_and_validate(self, command: "Message", encrypted_data: bytes) -> int:
         try:
             version = tuple(map(int, encrypted_data[:3].decode("utf8").split(".")))
         except UnicodeDecodeError:
@@ -376,7 +376,7 @@ class TuyaCipher:
             return 15
         return 0
 
-    def decrypt(self, command, data):
+    def decrypt(self, command: "Message", data: bytes):
         prefix_size = self.get_prefix_size_and_validate(command, data)
         data = data[prefix_size:]
         decryptor = self.cipher.decryptor()
@@ -414,7 +414,7 @@ class TuyaCipher:
 
         return prefix + payload
 
-    def hash(self, data):
+    def hash(self, data: bytes) -> bytes:
         digest = Hash(MD5(), backend=openssl_backend)  # noqa: S303
         to_hash = "data={}||lpv={}||{}".format(
             data.decode("ascii"), ".".join(map(str, self.version)), self.key
@@ -667,11 +667,11 @@ class TuyaDevice:
         message = Message(Message.GET_COMMAND, payload, encrypt_for=maybe_self)
         return await message.async_send(self, callback)
 
-    async def async_set(self, dps, callback=None):
+    async def async_set(self, dps: dict[str, Any]):
         t = int(time.time())
         payload = {"devId": self.device_id, "uid": "", "t": t, "dps": dps}
         message = Message(Message.SET_COMMAND, payload, encrypt_for=self)
-        await message.async_send(self, callback)
+        await message.async_send(self)
 
     async def _async_ping(self):
         self.last_ping = time.time()
@@ -729,4 +729,4 @@ class TuyaDevice:
             if retries == 0:
                 raise ConnectionException(f"Failed to send data to {self}") from e
             await self.async_connect()
-            await self.async_send(message, retries=retries - 1)
+            await self._async_send(message, retries=retries - 1)

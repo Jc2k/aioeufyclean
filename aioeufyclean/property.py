@@ -14,7 +14,7 @@
 
 
 class DeviceProperty:
-    def __init__(self, key, type_cast=None, read_only=False):
+    def __init__(self, key: str, type_cast=None, read_only: bool=False):
         self.key = key
         self.type_cast = type_cast
         self.read_only = read_only

@@ -101,10 +101,10 @@ class Robovac(TuyaDevice):
     async def async_pause(self) -> None:
         await self.async_set({self.PLAY_PAUSE: False})
 
-    async def async_start_cleaning(self, callback=None) -> None:
+    async def async_start_cleaning(self) -> None:
         await self.async_set({self.WORK_MODE: str(WorkMode.AUTO)})
 
-    async def async_go_home(self, callback=None) -> None:
+    async def async_go_home(self) -> None:
         await self.async_set({self.GO_HOME: True})
 
     async def async_set_work_mode(self, work_mode: WorkMode) -> None:
