@@ -41,7 +41,6 @@ import base64
 import contextlib
 import json
 import logging
-import socket
 import struct
 import time
 from typing import Self
@@ -639,14 +638,13 @@ class TuyaDevice:
     async def async_connect(self, callback=None):
         if self._connected:
             return
-        sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
-        sock.settimeout(self.timeout)
-        _LOGGER.debug(f"Connecting to {self}")
         try:
-            sock.connect((self.host, self.port))
+            self.reader, self.writer = await asyncio.wait_for(
+                asyncio.open_connection(host=self.host, port=self.port), self.timeout
+            )
         except TimeoutError as e:
             raise ConnectionTimeoutException("Connection timed out") from e
-        self.reader, self.writer = await asyncio.open_connection(sock=sock)
+
         self._connected = True
 
         asyncio.ensure_future(self._async_handle_message())
@@ -698,7 +696,7 @@ class TuyaDevice:
     def state_setter(self, new_values):
         asyncio.ensure_future(self.async_set(new_values))
 
-    async def _async_handle_message(self):
+    async def _async_handle_message(self) -> None:
         try:
             response_data = await self.reader.readuntil(MAGIC_SUFFIX_BYTES)
         except OSError as e:
@@ -719,7 +717,7 @@ class TuyaDevice:
 
         asyncio.ensure_future(self._async_handle_message())
 
-    async def _async_send(self, message, retries=4):
+    async def _async_send(self, message: Message, retries: int = 4) -> None:
         await self.async_connect()
         _LOGGER.debug(f"Sending to {self}: {message}")
         try:
