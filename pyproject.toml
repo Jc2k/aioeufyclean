@@ -161,6 +161,13 @@ asyncio_mode = "auto"
 
 [tool.ruff.lint]
 ignore = [
+  "D100",
+  "D101",
+  "D102",
+  "D104",
+  "D105",
+  "D106",
+  "D107",
   "ANN002", # Just annoying, not really useful
   "ANN003", # Just annoying, not really useful
   "ANN101", # Self... explanatory

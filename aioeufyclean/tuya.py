@@ -38,12 +38,13 @@
 
 import asyncio
 import base64
+import contextlib
 import json
 import logging
 import socket
 import struct
-import sys
 import time
+from typing import Self
 
 from cryptography.hazmat.backends.openssl import backend as openssl_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
@@ -51,6 +52,7 @@ from cryptography.hazmat.primitives.hashes import MD5, Hash
 from cryptography.hazmat.primitives.padding import PKCS7
 
 _LOGGER = logging.getLogger(__name__)
+
 MESSAGE_PREFIX_FORMAT = ">IIII"
 MESSAGE_SUFFIX_FORMAT = ">II"
 MAGIC_PREFIX = 0x000055AA
@@ -352,7 +354,9 @@ class TuyaCipher:
         self.version = version
         self.key = key
         self.cipher = Cipher(
-            algorithms.AES(key.encode("ascii")), modes.ECB(), backend=openssl_backend
+            algorithms.AES(key.encode("ascii")),
+            modes.ECB(),
+            backend=openssl_backend,  # noqa: S305
         )
 
     def get_prefix_size_and_validate(self, command, encrypted_data):
@@ -363,9 +367,9 @@ class TuyaCipher:
         if version != self.version:
             return 0
         if version < (3, 3):
-            hash = encrypted_data[3:19].decode("ascii")
+            actual_hash = encrypted_data[3:19].decode("ascii")
             expected_hash = self.hash(encrypted_data[19:])
-            if hash != expected_hash:
+            if actual_hash != expected_hash:
                 return 0
             return 19
         elif command in (Message.SET_COMMAND, Message.GRATUITOUS_UPDATE):
@@ -400,8 +404,8 @@ class TuyaCipher:
         prefix = ".".join(map(str, self.version)).encode("utf8")
         if self.version < (3, 3):
             payload = base64.b64encode(encrypted_data)
-            hash = self.hash(payload)
-            prefix += hash.encode("utf8")
+            payload_hash = self.hash(payload)
+            prefix += payload_hash.encode("utf8")
         else:
             payload = encrypted_data
             if command in (Message.SET_COMMAND, Message.GRATUITOUS_UPDATE):
@@ -412,7 +416,7 @@ class TuyaCipher:
         return prefix + payload
 
     def hash(self, data):
-        digest = Hash(MD5(), backend=openssl_backend)
+        digest = Hash(MD5(), backend=openssl_backend)  # noqa: S303
         to_hash = "data={}||lpv={}||{}".format(
             data.decode("ascii"), ".".join(map(str, self.version)), self.key
         )
@@ -524,7 +528,7 @@ class Message:
         await device._async_send(self)
 
     @classmethod
-    def from_bytes(cls, data, cipher=None):
+    def from_bytes(cls, data, cipher=None) -> Self:
         try:
             prefix, sequence, command, payload_size = struct.unpack_from(
                 MESSAGE_PREFIX_FORMAT, data
@@ -571,10 +575,8 @@ class Message:
 
         payload = None
         if payload_data:
-            try:
+            with contextlib.suppress(ValueError):
                 payload_data = cipher.decrypt(command, payload_data)
-            except ValueError:
-                pass
             try:
                 payload_text = payload_data.decode("utf8")
             except UnicodeDecodeError as e:
@@ -593,13 +595,6 @@ class Message:
 
 
 def _call_async(fn, *args):
-    loop = None
-    if sys.version_info >= (3, 7):
-        try:
-            loop = asyncio.get_running_loop()
-        except RuntimeError:
-            pass
-
     loop = asyncio.get_event_loop()
 
     def wrapper(fn, *args):
@@ -646,9 +641,6 @@ class TuyaDevice:
         }
         self._dps = {}
         self._connected = False
-
-    def __repr__(self):
-        return f"{self.__class__.__name__}({self.device_id!r}, {self.host!r}, {self.port!r}, {self.cipher.key!r})"
 
     def __str__(self):
         return f"{self.device_id} ({self.host}:{self.port})"
@@ -748,4 +740,4 @@ class TuyaDevice:
             if retries == 0:
                 raise ConnectionException(f"Failed to send data to {self}") from e
             await self.async_connect()
-            await self_.async_send(message, retries=retries - 1)
+            await self.async_send(message, retries=retries - 1)

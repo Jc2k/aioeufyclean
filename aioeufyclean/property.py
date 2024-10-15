@@ -36,6 +36,6 @@ class DeviceProperty:
         if self.read_only:
             raise AttributeError("can't set attribute")
 
-        if not isinstance(value, (bool, int, float, str, type(None))):
+        if not isinstance(value, bool | int | float | str | type(None)):
             value = str(value)
         instance.set({self.key: value})
