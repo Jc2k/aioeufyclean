@@ -17,72 +17,71 @@ import logging
 from .property import DeviceProperty, StringEnum
 from .tuya import TuyaDevice
 
-
 _LOGGER = logging.getLogger(__name__)
 
 
 class WorkMode(StringEnum):
-    AUTO = 'auto'
-    NO_SWEEP = 'Nosweep'
-    SMALL_ROOM = 'SmallRoom'
-    EDGE = 'Edge'
-    SPOT = 'Spot'
+    AUTO = "auto"
+    NO_SWEEP = "Nosweep"
+    SMALL_ROOM = "SmallRoom"
+    EDGE = "Edge"
+    SPOT = "Spot"
 
 
 class Direction(StringEnum):
-    LEFT = 'left'
-    RIGHT = 'right'
-    FORWARD = 'forward'
-    BACKWARD = 'backward'
+    LEFT = "left"
+    RIGHT = "right"
+    FORWARD = "forward"
+    BACKWARD = "backward"
 
 
 class WorkStatus(StringEnum):
     # Cleaning
-    RUNNING = 'Running'
+    RUNNING = "Running"
     # In the dock, charging
-    CHARGING = 'Charging'
+    CHARGING = "Charging"
     # Not in the dock, paused
-    STAND_BY = 'standby'
+    STAND_BY = "standby"
     # Not in the dock - goes into this state after being paused for a while
-    SLEEPING = 'Sleeping'
+    SLEEPING = "Sleeping"
     # Going home because battery is depleted
-    RECHARGE_NEEDED = 'Recharge'
+    RECHARGE_NEEDED = "Recharge"
     # In the dock, full charged
-    COMPLETED = 'completed'
+    COMPLETED = "completed"
 
 
 class CleanSpeed(StringEnum):
-    NO_SUCTION = 'No_suction'
-    STANDARD = 'Standard'
-    BOOST_IQ = 'Boost_IQ'
-    MAX = 'Max'
+    NO_SUCTION = "No_suction"
+    STANDARD = "Standard"
+    BOOST_IQ = "Boost_IQ"
+    MAX = "Max"
 
 
 class ErrorCode(StringEnum):
-    NO_ERROR = 'no_error'
-    WHEEL_STUCK = 'Wheel_stuck'
-    R_BRUSH_STUCK = 'R_brush_stuck'
-    CRASH_BAR_STUCK = 'Crash_bar_stuck'
-    SENSOR_DIRTY = 'sensor_dirty'
-    NOT_ENOUGH_POWER = 'N_enough_pow'
-    STUCK_5_MIN = 'Stuck_5_min'
-    FAN_STUCK = 'Fan_stuck'
-    S_BRUSH_STUCK = 'S_brush_stuck'
+    NO_ERROR = "no_error"
+    WHEEL_STUCK = "Wheel_stuck"
+    R_BRUSH_STUCK = "R_brush_stuck"
+    CRASH_BAR_STUCK = "Crash_bar_stuck"
+    SENSOR_DIRTY = "sensor_dirty"
+    NOT_ENOUGH_POWER = "N_enough_pow"
+    STUCK_5_MIN = "Stuck_5_min"
+    FAN_STUCK = "Fan_stuck"
+    S_BRUSH_STUCK = "S_brush_stuck"
 
 
 class Robovac(TuyaDevice):
     """Represents a generic Eufy Robovac."""
 
-    POWER = '1'
-    PLAY_PAUSE = '2'
-    DIRECTION = '3'
-    WORK_MODE = '5'
-    WORK_STATUS = '15'
-    GO_HOME = '101'
-    CLEAN_SPEED = '102'
-    FIND_ROBOT = '103'
-    BATTERY_LEVEL = '104'
-    ERROR_CODE = '106'
+    POWER = "1"
+    PLAY_PAUSE = "2"
+    DIRECTION = "3"
+    WORK_MODE = "5"
+    WORK_STATUS = "15"
+    GO_HOME = "101"
+    CLEAN_SPEED = "102"
+    FIND_ROBOT = "103"
+    BATTERY_LEVEL = "104"
+    ERROR_CODE = "106"
 
     power = DeviceProperty(POWER)
     play_pause = DeviceProperty(PLAY_PAUSE)

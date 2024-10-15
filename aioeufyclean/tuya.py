@@ -39,7 +39,6 @@
 import asyncio
 import base64
 import json
-from json.decoder import JSONDecodeError
 import logging
 import socket
 import struct
@@ -48,16 +47,15 @@ import time
 
 from cryptography.hazmat.backends.openssl import backend as openssl_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
-from cryptography.hazmat.primitives.hashes import Hash, MD5
+from cryptography.hazmat.primitives.hashes import MD5, Hash
 from cryptography.hazmat.primitives.padding import PKCS7
 
-
 _LOGGER = logging.getLogger(__name__)
-MESSAGE_PREFIX_FORMAT = '>IIII'
-MESSAGE_SUFFIX_FORMAT = '>II'
+MESSAGE_PREFIX_FORMAT = ">IIII"
+MESSAGE_SUFFIX_FORMAT = ">II"
 MAGIC_PREFIX = 0x000055AA
 MAGIC_SUFFIX = 0x0000AA55
-MAGIC_SUFFIX_BYTES = struct.pack('>I', MAGIC_SUFFIX)
+MAGIC_SUFFIX_BYTES = struct.pack(">I", MAGIC_SUFFIX)
 CRC_32_TABLE = [
     0x00000000, 0x77073096, 0xEE0E612C, 0x990951BA,
     0x076DC419, 0x706AF48F, 0xE963A535, 0x9E6495A3,
@@ -161,29 +159,28 @@ class TuyaCipher:
         """Initialize the cipher."""
         self.version = version
         self.key = key
-        self.cipher = Cipher(algorithms.AES(key.encode('ascii')), modes.ECB(),
+        self.cipher = Cipher(algorithms.AES(key.encode("ascii")), modes.ECB(),
                              backend=openssl_backend)
 
     def get_prefix_size_and_validate(self, command, encrypted_data):
         try:
-            version = tuple(map(int, encrypted_data[:3].decode('utf8').split('.')))
+            version = tuple(map(int, encrypted_data[:3].decode("utf8").split(".")))
         except UnicodeDecodeError:
             version = (0, 0)
         if version != self.version:
             return 0
         if version < (3, 3):
-            hash = encrypted_data[3:19].decode('ascii')
+            hash = encrypted_data[3:19].decode("ascii")
             expected_hash = self.hash(encrypted_data[19:])
             if hash != expected_hash:
                 return 0
             return 19
-        else:
-            if command in (Message.SET_COMMAND, Message.GRATUITOUS_UPDATE):
-                _, sequence, __, ___ = struct.unpack_from(
-                    '>IIIH', encrypted_data, 3)
-                return 15
+        elif command in (Message.SET_COMMAND, Message.GRATUITOUS_UPDATE):
+            _, sequence, __, ___ = struct.unpack_from(
+                ">IIIH", encrypted_data, 3)
+            return 15
         return 0
-        
+
 
     def decrypt(self, command, data):
         prefix_size = self.get_prefix_size_and_validate(command, data)
@@ -200,7 +197,7 @@ class TuyaCipher:
         return unpadded_data
 
     def encrypt(self, command, data):
-        encrypted_data = b''
+        encrypted_data = b""
         if data:
             padder = PKCS7(128).padder()
             padded_data = padder.update(data)
@@ -209,28 +206,28 @@ class TuyaCipher:
             encrypted_data = encryptor.update(padded_data)
             encrypted_data += encryptor.finalize()
 
-        prefix = '.'.join(map(str, self.version)).encode('utf8')
+        prefix = ".".join(map(str, self.version)).encode("utf8")
         if self.version < (3, 3):
             payload = base64.b64encode(encrypted_data)
             hash = self.hash(payload)
-            prefix += hash.encode('utf8')
+            prefix += hash.encode("utf8")
         else:
             payload = encrypted_data
             if command in (Message.SET_COMMAND, Message.GRATUITOUS_UPDATE):
-                prefix += b'\x00' * 12
+                prefix += b"\x00" * 12
             else:
-                prefix = b''
+                prefix = b""
 
         return prefix + payload
 
     def hash(self, data):
         digest = Hash(MD5(), backend=openssl_backend)
         to_hash = "data={}||lpv={}||{}".format(
-            data.decode('ascii'),
-            '.'.join(map(str, self.version)),
+            data.decode("ascii"),
+            ".".join(map(str, self.version)),
             self.key
         )
-        digest.update(to_hash.encode('utf8'))
+        digest.update(to_hash.encode("utf8"))
         intermediate = digest.finalize().hex()
         return intermediate[8:24]
 
@@ -253,7 +250,7 @@ class Message:
 
     def __init__(self, command, payload=None, sequence=None, encrypt_for=None):
         if payload is None:
-            payload = b''
+            payload = b""
         self.payload = payload
         self.command = command
         if sequence is None:
@@ -273,7 +270,7 @@ class Message:
             hex(self.command),
             self.payload,
             self.sequence,
-            "<Device {}>".format(self.device) if self.device else None
+            f"<Device {self.device}>" if self.device else None
             )
 
     def hex(self):
@@ -284,10 +281,10 @@ class Message:
         if isinstance(payload_data, dict):
             payload_data = json.dumps(
                 payload_data,
-                separators=(',',':')
+                separators=(",",":")
             )
         if not isinstance(payload_data, bytes):
-            payload_data = payload_data.encode('utf8')
+            payload_data = payload_data.encode("utf8")
 
         if self.encrypt:
             payload_data = self.device.cipher.encrypt(self.command, payload_data)
@@ -364,14 +361,14 @@ class Message:
         # check for an optional return code
         header_size = struct.calcsize(MESSAGE_PREFIX_FORMAT)
         try:
-            return_code, = struct.unpack_from('>I', data, header_size)
+            return_code, = struct.unpack_from(">I", data, header_size)
         except struct.error as e:
             raise InvalidMessage("Unable to unpack return code.") from e
         if return_code >> 8:
             payload_data = data[header_size:header_size + payload_size - struct.calcsize(MESSAGE_SUFFIX_FORMAT)]
             return_code = None
         else:
-            payload_data = data[header_size + struct.calcsize('>I'):header_size + payload_size - struct.calcsize(MESSAGE_SUFFIX_FORMAT)]
+            payload_data = data[header_size + struct.calcsize(">I"):header_size + payload_size - struct.calcsize(MESSAGE_SUFFIX_FORMAT)]
 
         try:
             expected_crc, suffix = struct.unpack_from(
@@ -392,21 +389,21 @@ class Message:
         if payload_data:
             try:
                 payload_data = cipher.decrypt(command, payload_data)
-            except ValueError as e:
+            except ValueError:
                 pass
             try:
-                payload_text = payload_data.decode('utf8')
+                payload_text = payload_data.decode("utf8")
             except UnicodeDecodeError as e:
                 _LOGGER.debug(payload_data.hex())
                 _LOGGER.error(e)
-                raise MessageDecodeFailed() from e
+                raise MessageDecodeFailed from e
             try:
                 payload = json.loads(payload_text)
             except json.decoder.JSONDecodeError as e:
                 # data may be encrypted
                 _LOGGER.debug(payload_data.hex())
                 _LOGGER.error(e)
-                raise MessageDecodeFailed() from e
+                raise MessageDecodeFailed from e
 
         return cls(command, payload, sequence)
 
@@ -459,26 +456,20 @@ class TuyaDevice:
         self._connected = False
 
     def __repr__(self):
-        return "{}({!r}, {!r}, {!r}, {!r})".format(
-            self.__class__.__name__,
-            self.device_id,
-            self.host,
-            self.port,
-            self.cipher.key
-        )
+        return f"{self.__class__.__name__}({self.device_id!r}, {self.host!r}, {self.port!r}, {self.cipher.key!r})"
 
     def __str__(self):
-        return "{} ({}:{})".format(self.device_id, self.host, self.port)
+        return f"{self.device_id} ({self.host}:{self.port})"
 
     async def async_connect(self, callback=None):
         if self._connected:
             return
         sock = socket.socket(family=socket.AF_INET, type=socket.SOCK_STREAM)
         sock.settimeout(self.timeout)
-        _LOGGER.debug("Connecting to {}".format(self))
+        _LOGGER.debug(f"Connecting to {self}")
         try:
             sock.connect((self.host, self.port))
-        except socket.timeout as e:
+        except TimeoutError as e:
             raise ConnectionTimeoutException("Connection timed out") from e
         self.reader, self.writer = await asyncio.open_connection(sock=sock)
         self._connected = True
@@ -488,7 +479,7 @@ class TuyaDevice:
         asyncio.ensure_future(self.async_get(callback))
 
     async def async_disconnect(self):
-        _LOGGER.debug("Disconnected from {}".format(self))
+        _LOGGER.debug(f"Disconnected from {self}")
         self._connected = False
         self.last_pong = 0
         if self.writer is not None:
@@ -496,8 +487,8 @@ class TuyaDevice:
 
     async def async_get(self, callback=None):
         payload = {
-            'gwId': self.gateway_id,
-            'devId': self.device_id
+            "gwId": self.gateway_id,
+            "devId": self.device_id
         }
         maybe_self = None if self.version < (3, 3) else self
         message = Message(Message.GET_COMMAND, payload, encrypt_for=maybe_self)
@@ -506,10 +497,10 @@ class TuyaDevice:
     async def async_set(self, dps, callback=None):
         t = int(time.time())
         payload = {
-            'devId': self.device_id,
-            'uid': '',
-            't': t,
-            'dps': dps
+            "devId": self.device_id,
+            "uid": "",
+            "t": t,
+            "dps": dps
         }
         message = Message(Message.SET_COMMAND, payload, encrypt_for=self)
         await message.async_send(self, callback)
@@ -534,7 +525,7 @@ class TuyaDevice:
 
     async def async_update_state(self, state_message, _):
         self._dps.update(state_message.payload["dps"])
-        _LOGGER.info("Received updated state {}: {}".format(self, self._dps))
+        _LOGGER.info(f"Received updated state {self}: {self._dps}")
 
     @property
     def state(self):
@@ -547,19 +538,19 @@ class TuyaDevice:
     async def _async_handle_message(self):
         try:
             response_data = await self.reader.readuntil(MAGIC_SUFFIX_BYTES)
-        except socket.error as e:
-            _LOGGER.error("Connection to {} failed: {}".format(self, e))
+        except OSError as e:
+            _LOGGER.error(f"Connection to {self} failed: {e}")
             asyncio.ensure_future(self.async_disconnect())
             return
 
         try:
             message = Message.from_bytes(response_data, self.cipher)
         except InvalidMessage as e:
-            _LOGGER.error("Invalid message from {}: {}".format(self, e))
-        except MessageDecodeFailed as e:
-            _LOGGER.error("Failed to decrypt message from {}".format(self))
+            _LOGGER.error(f"Invalid message from {self}: {e}")
+        except MessageDecodeFailed:
+            _LOGGER.error(f"Failed to decrypt message from {self}")
         else:
-            _LOGGER.debug("Received message from {}: {}".format(self, message))
+            _LOGGER.debug(f"Received message from {self}: {message}")
             for c in self._handlers.get(message.command, []):
                 asyncio.ensure_future(c(message, self))
 
@@ -567,12 +558,11 @@ class TuyaDevice:
 
     async def _async_send(self, message, retries=4):
         await self.async_connect()
-        _LOGGER.debug("Sending to {}: {}".format(self, message))
+        _LOGGER.debug(f"Sending to {self}: {message}")
         try:
             self.writer.write(message.bytes())
-        except (socket.timeout, socket.error, OSError) as e:
+        except (TimeoutError, OSError) as e:
             if retries == 0:
-                raise ConnectionException("Failed to send data to {}".format(
-                    self)) from e
+                raise ConnectionException(f"Failed to send data to {self}") from e
             await self.async_connect()
             await self_.async_send(message, retries=retries - 1)
