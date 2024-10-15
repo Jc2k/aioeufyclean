@@ -95,23 +95,23 @@ class Robovac(TuyaDevice):
     battery_level = DeviceProperty(BATTERY_LEVEL, read_only=True)
     error_code = DeviceProperty(ERROR_CODE, ErrorCode, True)
 
-    async def async_play(self, callback=None):
-        await self.async_set({self.PLAY_PAUSE: True}, callback)
+    async def async_play(self) -> None:
+        await self.async_set({self.PLAY_PAUSE: True})
 
-    async def async_pause(self, callback=None):
-        await self.async_set({self.PLAY_PAUSE: False}, callback)
+    async def async_pause(self) -> None:
+        await self.async_set({self.PLAY_PAUSE: False})
 
-    async def async_start_cleaning(self, callback=None):
-        await self.async_set({self.WORK_MODE: str(WorkMode.AUTO)}, callback)
+    async def async_start_cleaning(self, callback=None) -> None:
+        await self.async_set({self.WORK_MODE: str(WorkMode.AUTO)})
 
-    async def async_go_home(self, callback=None):
-        await self.async_set({self.GO_HOME: True}, callback)
+    async def async_go_home(self, callback=None) -> None:
+        await self.async_set({self.GO_HOME: True})
 
-    async def async_set_work_mode(self, work_mode, callback=None):
-        await self.async_set({self.WORK_MODE: str(work_mode)}, callback)
+    async def async_set_work_mode(self, work_mode: WorkMode) -> None:
+        await self.async_set({self.WORK_MODE: str(work_mode)})
 
-    async def async_find_robot(self, callback=None):
-        await self.async_set({self.FIND_ROBOT: True}, callback)
+    async def async_find_robot(self) -> None:
+        await self.async_set({self.FIND_ROBOT: True})
 
-    async def async_set_clean_speed(self, clean_speed, callback=None):
-        await self.async_set({self.CLEAN_SPEED: str(clean_speed)}, callback)
+    async def async_set_clean_speed(self, clean_speed: CleanSpeed) -> None:
+        await self.async_set({self.CLEAN_SPEED: str(clean_speed)})
