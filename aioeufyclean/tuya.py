@@ -475,37 +475,6 @@ class Message:
 
     __bytes__ = bytes
 
-    class AsyncWrappedCallback:
-        def __init__(self, request, callback):
-            self.request = request
-            self.callback = callback
-            self.devices = []
-
-        def register(self, device):
-            self.devices.append(device)
-            device._handlers.setdefault(self.request.command, [])
-            device._handlers[self.request.command].append(self)
-
-        def unregister(self, device):
-            self.devices.remove(device)
-            device._handlers[self.request.command].remove(self)
-
-        def unregister_all(self):
-            while self.devices:
-                device = self.devices.pop()
-                device._handlers[self.request.command].remove(self)
-
-        async def __call__(self, response, device):
-            if response.sequence == self.request.sequence:
-                asyncio.ensure_future(self.callback(response, device))
-                self.unregister(device)
-
-    async def async_send(self, device, callback=None):
-        if callback is not None:
-            wrapped = self.AsyncWrappedCallback(self, callback)
-            wrapped.register(device)
-        await device._async_send(self)
-
     @classmethod
     def from_bytes(cls, data, cipher=None) -> Self:
         try:
@@ -580,7 +549,7 @@ class TuyaDevice:
 
     def __init__(
         self,
-        device_id,
+        unique_id,
         host,
         local_key=None,
         port=6668,
@@ -589,11 +558,11 @@ class TuyaDevice:
         timeout=10,
     ):
         """Initialize the device."""
-        self.device_id = device_id
+        self.unique_id = unique_id
         self.host = host
         self.port = port
         if not gateway_id:
-            gateway_id = self.device_id
+            gateway_id = self.unique_id
         self.gateway_id = gateway_id
         self.version = version
         self.timeout = timeout
@@ -609,14 +578,15 @@ class TuyaDevice:
             Message.GRATUITOUS_UPDATE: [self.async_update_state],
             Message.PING_COMMAND: [self._async_pong_received],
         }
+        self._futures: dict[str, asyncio.Future] = {}
         self._dps = {}
         self._connected = False
         self._connecting_lock = asyncio.Lock()
 
     def __str__(self):
-        return f"{self.device_id} ({self.host}:{self.port})"
+        return f"{self.unique_id} ({self.host}:{self.port})"
 
-    async def async_connect(self, callback=None):
+    async def async_connect(self):
         async with self._connecting_lock:
             if self._connected:
                 return
@@ -632,7 +602,7 @@ class TuyaDevice:
 
             asyncio.ensure_future(self._async_handle_message())
             asyncio.ensure_future(self._async_ping())
-            asyncio.ensure_future(self.async_get(callback))
+            asyncio.ensure_future(self.async_get())
 
     async def async_disconnect(self):
         _LOGGER.debug(f"Disconnected from {self}")
@@ -641,23 +611,23 @@ class TuyaDevice:
         if self.writer is not None:
             self.writer.close()
 
-    async def async_get(self, callback=None):
-        payload = {"gwId": self.gateway_id, "devId": self.device_id}
+    async def async_get(self):
+        payload = {"gwId": self.gateway_id, "devId": self.unique_id}
         maybe_self = None if self.version < (3, 3) else self
         message = Message(Message.GET_COMMAND, payload, encrypt_for=maybe_self)
-        return await message.async_send(self, callback)
+        return await self.async_send(message)
 
     async def async_set(self, dps: dict[str, Any]):
         t = int(time.time())
-        payload = {"devId": self.device_id, "uid": "", "t": t, "dps": dps}
+        payload = {"devId": self.unique_id, "uid": "", "t": t, "dps": dps}
         message = Message(Message.SET_COMMAND, payload, encrypt_for=self)
-        await message.async_send(self)
+        await self.async_send(message)
 
     async def _async_ping(self):
         self.last_ping = time.time()
         maybe_self = None if self.version < (3, 3) else self
         message = Message(Message.PING_COMMAND, sequence=0, encrypt_for=maybe_self)
-        await self._async_send(message)
+        await self.async_send(message)
         await asyncio.sleep(self.PING_INTERVAL)
         if self.last_pong < self.last_ping:
             await self.async_disconnect()
@@ -668,16 +638,10 @@ class TuyaDevice:
         self.last_pong = time.time()
 
     async def async_update_state(self, state_message, _):
+        _LOGGER.debug("Received updated state %s: %s", self, state_message)
         self._dps.update(state_message.payload["dps"])
-        _LOGGER.info(f"Received updated state {self}: {self._dps}")
-
-    @property
-    def state(self):
-        return dict(self._dps)
-
-    @state.setter
-    def state_setter(self, new_values):
-        asyncio.ensure_future(self.async_set(new_values))
+        self.state = self._handle_state_update(self._dps)
+        _LOGGER.debug("New vacuum state %s: %s", self, self.state)
 
     async def _async_handle_message(self) -> None:
         try:
@@ -697,16 +661,20 @@ class TuyaDevice:
             _LOGGER.debug(f"Received message from {self}: {message}")
             for c in self._handlers.get(message.command, []):
                 asyncio.ensure_future(c(message, self))
+            if future := self._futures.pop(message.sequence, None):
+                future.set_result(message)
 
         asyncio.ensure_future(self._async_handle_message())
 
-    async def _async_send(self, message: Message, retries: int = 4) -> None:
+    async def async_send(self, message: Message, retries: int = 4) -> Message:
         await self.async_connect()
         _LOGGER.debug(f"Sending to {self}: {message}")
+        fut = self._futures[message.sequence] = asyncio.Future()
         try:
             self.writer.write(message.bytes())
         except (TimeoutError, OSError) as e:
             if retries == 0:
                 raise ConnectionException(f"Failed to send data to {self}") from e
             await self.async_connect()
-            await self._async_send(message, retries=retries - 1)
+            await self.async_send(message, retries=retries - 1)
+        return await asyncio.wait_for(fut, 10)

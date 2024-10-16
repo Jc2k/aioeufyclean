@@ -12,10 +12,12 @@
 # See the License for the specific language governing permissions and
 # limitations under the License.
 
+import base64
+import json
 import logging
+from dataclasses import dataclass
 from enum import StrEnum
 
-from .property import DeviceProperty
 from .tuya import TuyaDevice
 
 _LOGGER = logging.getLogger(__name__)
@@ -34,21 +36,6 @@ class Direction(StrEnum):
     RIGHT = "right"
     FORWARD = "forward"
     BACKWARD = "backward"
-
-
-class WorkStatus(StrEnum):
-    # Cleaning
-    RUNNING = "Running"
-    # In the dock, charging
-    CHARGING = "Charging"
-    # Not in the dock, paused
-    STAND_BY = "standby"
-    # Not in the dock - goes into this state after being paused for a while
-    SLEEPING = "Sleeping"
-    # Going home because battery is depleted
-    RECHARGE_NEEDED = "Recharge"
-    # In the dock, full charged
-    COMPLETED = "completed"
 
 
 class CleanSpeed(StrEnum):
@@ -70,6 +57,36 @@ class ErrorCode(StrEnum):
     S_BRUSH_STUCK = "S_brush_stuck"
 
 
+class State(StrEnum):
+    DOCKED = "docked"
+    CLEANING = "cleaning"
+    RETURNING = "returning"
+    ERROR = "error"
+    PAUSED = "paused"
+    ON = "on"
+    OFF = "off"
+    IDLE = "idle"
+
+
+class BinarySensor(StrEnum):
+    pass
+
+
+class Sensor(StrEnum):
+    BATTERY = "battery"
+    FILTER_LIFE = "filter_life"
+    SIDE_BRUSH_LIFE = "side_brush_life"
+    ROLLING_BRUSH_LIFE = "rolling_brush_life"
+    SENSOR_CLEAN_LIFE = "sensor_clean_life"
+
+
+@dataclass
+class VacuumState:
+    state: State
+    sensors: dict[Sensor, str | int | float]
+    binary_sensors: dict[BinarySensor, bool]
+
+
 class VacuumDevice(TuyaDevice):
     """Represents a generic Eufy Robovac."""
 
@@ -83,35 +100,64 @@ class VacuumDevice(TuyaDevice):
     FIND_ROBOT = "103"
     BATTERY_LEVEL = "104"
     ERROR_CODE = "106"
+    CONSUMABLE = "116"
 
-    power = DeviceProperty(POWER)
-    play_pause = DeviceProperty(PLAY_PAUSE)
-    direction = DeviceProperty(DIRECTION)
-    work_mode = DeviceProperty(WORK_MODE, WorkMode)
-    work_status = DeviceProperty(WORK_STATUS, WorkStatus, True)
-    go_home = DeviceProperty(GO_HOME)
-    clean_speed = DeviceProperty(CLEAN_SPEED, CleanSpeed)
-    find_robot = DeviceProperty(FIND_ROBOT)
-    battery_level = DeviceProperty(BATTERY_LEVEL, read_only=True)
-    error_code = DeviceProperty(ERROR_CODE, ErrorCode, True)
+    def _handle_state_update(self, payload: dict) -> VacuumState:
+        if payload.get(self.ERROR_CODE) != 0:
+            state = State.ERROR
+        elif payload.get(self.POWER) == "1" or payload.get(self.WORK_STATUS) in (
+            "Charging",
+            "completed",
+        ):
+            state = State.DOCKED
+        elif payload.get(self.WORK_STATUS) in ("Recharge",):
+            state = State.RETURNING
+        elif payload.get(self.WORK_STATUS) in ("Sleeping", "standby"):
+            state = State.IDLE
+        else:
+            state = State.CLEANING
 
-    async def async_play(self) -> None:
-        await self.async_set({self.PLAY_PAUSE: True})
+        vacuum_state = VacuumState(
+            state=state,
+            sensors={},
+            binary_sensors={},
+        )
+
+        if self.BATTERY_LEVEL in payload:
+            vacuum_state.sensors[Sensor.BATTERY] = payload[self.BATTERY_LEVEL]
+
+        if consumable_json := payload.get(self.CONSUMABLE):
+            if (
+                duration := json.loads(base64.b64decode(consumable_json))
+                .get("consumable", {})
+                .get("duration", {})
+            ):
+                # TODO: What are SP, TR and BatteryStatus?
+                if "FM" in duration:
+                    vacuum_state.sensors[Sensor.FILTER_LIFE] = duration["FM"]
+                if "RB" in duration:
+                    vacuum_state.sensors[Sensor.ROLLING_BRUSH_LIFE] = duration["RB"]
+                if "SB" in duration:
+                    vacuum_state.sensors[Sensor.SIDE_BRUSH_LIFE] = duration["SB"]
+                if "SS" in duration:
+                    vacuum_state.sensors[Sensor.SENSOR_CLEAN_LIFE] = duration["SS"]
+
+        return vacuum_state
+
+    async def async_start(self):
+        await self.async_set({self.WORK_MODE: str(WorkMode.AUTO)})
 
     async def async_pause(self) -> None:
         await self.async_set({self.PLAY_PAUSE: False})
 
-    async def async_start_cleaning(self) -> None:
-        await self.async_set({self.WORK_MODE: str(WorkMode.AUTO)})
+    async def async_stop(self) -> None:
+        await self.async_set({self.PLAY_PAUSE: False})
 
-    async def async_go_home(self) -> None:
+    async def async_return_to_base(self) -> None:
         await self.async_set({self.GO_HOME: True})
 
-    async def async_set_work_mode(self, work_mode: WorkMode) -> None:
-        await self.async_set({self.WORK_MODE: str(work_mode)})
-
-    async def async_find_robot(self) -> None:
+    async def async_locate(self) -> None:
         await self.async_set({self.FIND_ROBOT: True})
 
-    async def async_set_clean_speed(self, clean_speed: CleanSpeed) -> None:
+    async def async_set_fan_speed(self, clean_speed: CleanSpeed) -> None:
         await self.async_set({self.CLEAN_SPEED: str(clean_speed)})
