@@ -461,6 +461,8 @@ class Message:
             payload_data = json.dumps(self.payload, separators=(",", ":")).encode("utf-8")
         elif not isinstance(self.payload, bytes):
             payload_data = self.payload.encode("utf8")
+        else:
+            payload_data = self.payload
 
         if self.encrypt:
             assert self.device
@@ -625,11 +627,9 @@ class TuyaDevice:
             self._connected = True
             for callback in self._availability_callbacks:
                 callback(True)
-            asyncio.ensure_future(self._async_handle_message())
             asyncio.ensure_future(self._async_ping())
-            asyncio.ensure_future(self.async_get())
 
-    async def async_disconnect(self) -> None:
+    def _async_disconnect(self) -> None:
         _LOGGER.debug(f"Disconnected from {self}")
         self._connected = False
         for callback in self._availability_callbacks:
@@ -637,6 +637,7 @@ class TuyaDevice:
         self.last_pong = 0
         if self.writer is not None:
             self.writer.close()
+            self.writer = None
 
     async def async_get(self) -> Message:
         payload = {"gwId": self.gateway_id, "devId": self.unique_id}
@@ -657,7 +658,7 @@ class TuyaDevice:
         await self.async_send(message)
         await asyncio.sleep(self.PING_INTERVAL)
         if self.last_pong < self.last_ping:
-            await self.async_disconnect()
+            self._async_disconnect()
         else:
             asyncio.ensure_future(self._async_ping())
 
@@ -676,33 +677,45 @@ class TuyaDevice:
     def _handle_state_update(self, dps: dict[str, Any]) -> Any:
         raise NotImplementedError
 
-    async def _async_handle_message(self) -> None:
+    async def _async_read_message(self) -> Message | None:
         try:
             response_data = await self.reader.readuntil(MAGIC_SUFFIX_BYTES)
         except OSError as e:
             _LOGGER.error(f"Connection to {self} failed: {e}")
-            asyncio.ensure_future(self.async_disconnect())
-            return
+            self._async_disconnect()
+            return None
 
         try:
             message = Message.from_bytes(response_data, self.cipher)
+
         except InvalidMessage as e:
             _LOGGER.error(f"Invalid message from {self}: {e}")
+            self._async_disconnect()
+            return None
+
         except MessageDecodeFailed:
             _LOGGER.error(f"Failed to decrypt message from {self}")
-        else:
-            _LOGGER.debug(f"Received message from {self}: {message}")
+            self._async_disconnect()
+            return None
 
-            if message.command in (Message.GET_COMMAND, Message.GRATUITOUS_UPDATE):
-                await self.async_update_state(message)
+        _LOGGER.debug(f"Received message from {self}: {message}")
+        return message
 
-            elif message.command == Message.PING_COMMAND:
-                await self._async_pong_received(message)
+    async def async_process_messages(self) -> None:
+        while True:
+            await self.async_connect()
 
-            if future := self._futures.pop(message.sequence, None):
-                future.set_result(message)
+            # asyncio.ensure_future(self.async_get())
 
-        asyncio.ensure_future(self._async_handle_message())
+            while message := await self._async_read_message():
+                if message.command in (Message.GET_COMMAND, Message.GRATUITOUS_UPDATE):
+                    await self.async_update_state(message)
+
+                elif message.command == Message.PING_COMMAND:
+                    await self._async_pong_received(message)
+
+                if future := self._futures.pop(message.sequence, None):
+                    future.set_result(message)
 
     async def async_send(self, message: Message, retries: int = 4) -> Message:
         await self.async_connect()
@@ -712,6 +725,7 @@ class TuyaDevice:
             assert self.writer
             self.writer.write(message.to_bytes())
         except (TimeoutError, OSError) as e:
+            self._futures.pop(message.sequence, None)
             if retries == 0:
                 raise ConnectionException(f"Failed to send data to {self}") from e
             await self.async_connect()

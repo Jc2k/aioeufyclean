@@ -78,6 +78,10 @@ class Sensor(StrEnum):
     SENSOR_CLEAN_LIFE = "sensor_clean_life"
 
 
+class Switch(StrEnum):
+    BOOST_IQ = "boost_iq"
+
+
 @dataclass
 class DataPoint:
     POWER = "1"
@@ -91,13 +95,17 @@ class DataPoint:
     BATTERY_LEVEL = "104"
     ERROR_CODE = "106"
     CONSUMABLE = "116"
+    BOOST_IQ = "118"
 
 
 @dataclass
 class VacuumState:
     state: State
+    clean_speed: CleanSpeed
+    clean_speed_list: list[CleanSpeed]
     sensors: dict[Sensor, str | int | float]
     binary_sensors: dict[BinarySensor, bool]
+    switches: dict[Switch, bool]
 
 
 class VacuumDevice(TuyaDevice):
@@ -118,10 +126,16 @@ class VacuumDevice(TuyaDevice):
         else:
             state = State.CLEANING
 
+        clean_speed = CleanSpeed(payload[DataPoint.CLEAN_SPEED])
+        clean_speed_list = [clean_speed]
+
         vacuum_state = VacuumState(
             state=state,
+            clean_speed=clean_speed,
+            clean_speed_list=clean_speed_list,
             sensors={},
             binary_sensors={},
+            switches={},
         )
 
         if DataPoint.BATTERY_LEVEL in payload:
@@ -142,6 +156,9 @@ class VacuumDevice(TuyaDevice):
                     vacuum_state.sensors[Sensor.SIDE_BRUSH_LIFE] = duration["SB"]
                 if "SS" in duration:
                     vacuum_state.sensors[Sensor.SENSOR_CLEAN_LIFE] = duration["SS"]
+
+        if boost_iq := payload.get(DataPoint.BOOST_IQ):
+            vacuum_state.switches[Switch.BOOST_IQ] = boost_iq
 
         return vacuum_state
 
@@ -165,3 +182,7 @@ class VacuumDevice(TuyaDevice):
 
     async def async_clean_spot(self) -> None:
         await self.async_set({DataPoint.WORK_MODE: WorkMode.SPOT})
+
+    async def async_set_switch(self, switch: Switch, value: bool) -> None:
+        if switch == Switch.BOOST_IQ:
+            await self.async_set({DataPoint.BOOST_IQ: value})
