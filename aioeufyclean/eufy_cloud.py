@@ -1,7 +1,7 @@
 """
 For obtaining a list of keys for controlling eufy devices.
 
-This is only needed once, to get teh initial key.
+This is only needed once, to get the initial key.
 
 See https://github.com/markbajaj/eufy-device-id-python/blob/main/eufy_local_id_grabber/crypto.py
 """

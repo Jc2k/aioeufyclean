@@ -20,4 +20,3 @@ for venv in venv .venv .; do
 done
 
 exec "$@"
-

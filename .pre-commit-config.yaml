@@ -60,7 +60,7 @@ repos:
         name: ✅ Check code for common misspellings
         language: system
         types: [text]
-        exclude: CHANGELOG.md
+        exclude: ^(CHANGELOG.md|uv.lock)$
         entry: scripts/run-in-env.sh codespell
       - id: detect-private-key
         name: 🕵️  Detect Private Keys

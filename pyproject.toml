@@ -264,4 +264,3 @@ known-first-party = ["music_assistant"]
 
 [tool.ruff.lint.mccabe]
 max-complexity = 25
-
