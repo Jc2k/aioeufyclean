@@ -1,1 +1,57 @@
 # CHANGELOG
+
+
+
+## v0.1.0 (2024-10-17)
+
+### Chore
+
+* chore: more lint fixes ([`7567665`](https://github.com/Jc2k/aioeufyclean/commit/7567665236891962274ad81ad1bbdd355c09daff))
+
+* chore: fix mypy ([`5b93cfd`](https://github.com/Jc2k/aioeufyclean/commit/5b93cfdba0e468ee132fbaf9fa78e5c90593d179))
+
+* chore: remove unused code ([`b2c423a`](https://github.com/Jc2k/aioeufyclean/commit/b2c423a078a5ae96430a14eac48d107b918d9d02))
+
+* chore: refactoring ([`67e5182`](https://github.com/Jc2k/aioeufyclean/commit/67e5182d192f3ff147b3ec1434847324840b235a))
+
+* chore: update gitignore ([`af44869`](https://github.com/Jc2k/aioeufyclean/commit/af448696b384393db3155b8d3ad6b8db4b2f43b2))
+
+* chore: more cleanup ([`a31eccd`](https://github.com/Jc2k/aioeufyclean/commit/a31eccd83aec16beb8564b068724cc1c107dfc67))
+
+* chore: fix extracting device access key ([`1925c43`](https://github.com/Jc2k/aioeufyclean/commit/1925c435d9bbacfbe3acde825b46e79fdd5c1fc2))
+
+* chore: ruff fmt ([`8eba4b0`](https://github.com/Jc2k/aioeufyclean/commit/8eba4b02eecaa7b6728b3255920fa7d9d92e3570))
+
+* chore: adding more typing ([`1d554e5`](https://github.com/Jc2k/aioeufyclean/commit/1d554e57f027a599f8e6abc8e46c60dad437d3bb))
+
+* chore: add stub readme ([`24876ef`](https://github.com/Jc2k/aioeufyclean/commit/24876ef61e50e37c67e9d3b46b47b39bcc0b40cb))
+
+* chore: add py.typed marker file ([`993d766`](https://github.com/Jc2k/aioeufyclean/commit/993d76616d97e0908b393e4c7abaeacb7f8d38a0))
+
+* chore: non blocking connect ([`69949be`](https://github.com/Jc2k/aioeufyclean/commit/69949be183fea5d88c44db74c88e536b2c5b3cb3))
+
+* chore: get rid of _call_async ([`b346abc`](https://github.com/Jc2k/aioeufyclean/commit/b346abc048b1386ca18239a854baa6c5cc1290e9))
+
+* chore: get rid of callback in device.py ([`32d71c8`](https://github.com/Jc2k/aioeufyclean/commit/32d71c8dce18215842b78af3ab2e008354f2d626))
+
+* chore: use StrEnum from stdlib ([`e987dc9`](https://github.com/Jc2k/aioeufyclean/commit/e987dc9a9c8ece8d79389591f552512ed623930e))
+
+* chore: fix ruff lints ([`e0fed7f`](https://github.com/Jc2k/aioeufyclean/commit/e0fed7fcae4a474b99052c405d286a94b8bc7567))
+
+* chore: ruff fmt ([`9dd80b3`](https://github.com/Jc2k/aioeufyclean/commit/9dd80b39e94376667fca5471553c2c28f5eb5080))
+
+* chore: ruff fix ([`5dfe993`](https://github.com/Jc2k/aioeufyclean/commit/5dfe993a066ca2118f025ae8f90f00ae62af8f66))
+
+* chore: uv sync ([`0f25627`](https://github.com/Jc2k/aioeufyclean/commit/0f25627d20138b5f9d1bfc3a4f67d349a8b9efb2))
+
+* chore: project skaffolding ([`fe4b90b`](https://github.com/Jc2k/aioeufyclean/commit/fe4b90b16d30bd87b4e8d07283a3f8fe31d92860))
+
+### Feature
+
+* feat: work towards extracting access token for local control ([`25bfa5e`](https://github.com/Jc2k/aioeufyclean/commit/25bfa5efa537ab62d167075f79cec49efd6e9395))
+
+* feat: start logging in ([`2e993be`](https://github.com/Jc2k/aioeufyclean/commit/2e993bede93e18d89aef7cac9dc2a3e25ba3dd05))
+
+* feat: lock around connect to avoid parallel connection attempts ([`2324906`](https://github.com/Jc2k/aioeufyclean/commit/232490639928d4b23cf9ae138a28d8381eb6ff23))
+
+* feat: add initial device wrapper (thanks mitch) ([`07e4d3c`](https://github.com/Jc2k/aioeufyclean/commit/07e4d3c54fdd3389b6b7af1ebca1473220be261a))
