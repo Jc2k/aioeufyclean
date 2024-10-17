@@ -45,6 +45,7 @@ import json
 import logging
 import struct
 import time
+from collections.abc import Callable
 from typing import Any, Self
 
 from cryptography.hazmat.backends.openssl import backend as openssl_backend
@@ -585,9 +586,18 @@ class TuyaDevice:
         self._dps: dict[str, Any] = {}
         self._connected = False
         self._connecting_lock = asyncio.Lock()
+        self._state_callbacks: set[Callable[[Any], None]] = set()
 
     def __str__(self) -> str:
         return f"{self.unique_id} ({self.host}:{self.port})"
+
+    def async_add_state_callback(self, callback: Callable[[Any], None]) -> Callable[[], None]:
+        self._state_callbacks.add(callback)
+
+        def _() -> None:
+            self._state_callbacks.discard(callback)
+
+        return _
 
     async def async_connect(self) -> None:
         async with self._connecting_lock:
@@ -646,6 +656,8 @@ class TuyaDevice:
         self._dps.update(state_message.payload["dps"])
         self.state = self._handle_state_update(self._dps)
         _LOGGER.debug("New vacuum state %s: %s", self, self.state)
+        for callback in self._state_callbacks:
+            callback(self.state)
 
     def _handle_state_update(self, dps: dict[str, Any]) -> Any:
         raise NotImplementedError
