@@ -82,15 +82,7 @@ class Sensor(StrEnum):
 
 
 @dataclass
-class VacuumState:
-    state: State
-    sensors: dict[Sensor, str | int | float]
-    binary_sensors: dict[BinarySensor, bool]
-
-
-class VacuumDevice(TuyaDevice):
-    """Represents a generic Eufy Robovac."""
-
+class DataPoint:
     POWER = "1"
     PLAY_PAUSE = "2"
     DIRECTION = "3"
@@ -103,17 +95,28 @@ class VacuumDevice(TuyaDevice):
     ERROR_CODE = "106"
     CONSUMABLE = "116"
 
+
+@dataclass
+class VacuumState:
+    state: State
+    sensors: dict[Sensor, str | int | float]
+    binary_sensors: dict[BinarySensor, bool]
+
+
+class VacuumDevice(TuyaDevice):
+    """Represents a generic Eufy Robovac."""
+
     def _handle_state_update(self, payload: dict[str, Any]) -> VacuumState:
-        if payload.get(self.ERROR_CODE) != 0:
+        if payload.get(DataPoint.ERROR_CODE) != 0:
             state = State.ERROR
-        elif payload.get(self.POWER) == "1" or payload.get(self.WORK_STATUS) in (
+        elif payload.get(DataPoint.POWER) == "1" or payload.get(DataPoint.WORK_STATUS) in (
             "Charging",
             "completed",
         ):
             state = State.DOCKED
-        elif payload.get(self.WORK_STATUS) in ("Recharge",):
+        elif payload.get(DataPoint.WORK_STATUS) in ("Recharge",):
             state = State.RETURNING
-        elif payload.get(self.WORK_STATUS) in ("Sleeping", "standby"):
+        elif payload.get(DataPoint.WORK_STATUS) in ("Sleeping", "standby"):
             state = State.IDLE
         else:
             state = State.CLEANING
@@ -124,10 +127,10 @@ class VacuumDevice(TuyaDevice):
             binary_sensors={},
         )
 
-        if self.BATTERY_LEVEL in payload:
-            vacuum_state.sensors[Sensor.BATTERY] = payload[self.BATTERY_LEVEL]
+        if DataPoint.BATTERY_LEVEL in payload:
+            vacuum_state.sensors[Sensor.BATTERY] = payload[DataPoint.BATTERY_LEVEL]
 
-        if consumable_json := payload.get(self.CONSUMABLE):
+        if consumable_json := payload.get(DataPoint.CONSUMABLE):
             if (
                 duration := json.loads(base64.b64decode(consumable_json))
                 .get("consumable", {})
@@ -146,19 +149,19 @@ class VacuumDevice(TuyaDevice):
         return vacuum_state
 
     async def async_start(self) -> None:
-        await self.async_set({self.WORK_MODE: str(WorkMode.AUTO)})
+        await self.async_set({DataPoint.WORK_MODE: str(WorkMode.AUTO)})
 
     async def async_pause(self) -> None:
-        await self.async_set({self.PLAY_PAUSE: False})
+        await self.async_set({DataPoint.PLAY_PAUSE: False})
 
     async def async_stop(self) -> None:
-        await self.async_set({self.PLAY_PAUSE: False})
+        await self.async_set({DataPoint.PLAY_PAUSE: False})
 
     async def async_return_to_base(self) -> None:
-        await self.async_set({self.GO_HOME: True})
+        await self.async_set({DataPoint.GO_HOME: True})
 
     async def async_locate(self) -> None:
-        await self.async_set({self.FIND_ROBOT: True})
+        await self.async_set({DataPoint.FIND_ROBOT: True})
 
     async def async_set_fan_speed(self, clean_speed: CleanSpeed) -> None:
-        await self.async_set({self.CLEAN_SPEED: str(clean_speed)})
+        await self.async_set({DataPoint.CLEAN_SPEED: str(clean_speed)})
