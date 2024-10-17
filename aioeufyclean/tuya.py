@@ -690,4 +690,8 @@ class TuyaDevice:
                 raise ConnectionException(f"Failed to send data to {self}") from e
             await self.async_connect()
             await self.async_send(message, retries=retries - 1)
-        return await asyncio.wait_for(fut, 10)
+        try:
+            return await asyncio.wait_for(fut, 10)
+        except TimeoutError:
+            self._futures.pop(message.sequence, None)
+            raise

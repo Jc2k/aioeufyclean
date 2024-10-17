@@ -20,8 +20,6 @@ import aiohttp
 from cryptography.hazmat.backends.openssl import backend as openssl_backend
 from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
 
-TUYA_INITIAL_BASE_URL = "https://a1.tuyaeu.com"
-
 EUFY_HMAC_KEY = b"A_cepev5pfnhua4dkqkdpmnrdxx378mpjr_s8x78u7xwymasd9kqa7a73pjhxqsedaj"
 
 
