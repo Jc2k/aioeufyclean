@@ -36,6 +36,8 @@
 # OUT OF OR IN CONNECTION WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE
 # SOFTWARE.
 
+from __future__ import annotations
+
 import asyncio
 import base64
 import contextlib
@@ -338,7 +340,7 @@ class TuyaCipher:
             backend=openssl_backend,
         )
 
-    def get_prefix_size_and_validate(self, command: "Message", encrypted_data: bytes) -> int:
+    def get_prefix_size_and_validate(self, command: Message, encrypted_data: bytes) -> int:
         try:
             version = tuple(map(int, encrypted_data[:3].decode("utf8").split(".")))
         except UnicodeDecodeError:
@@ -356,7 +358,7 @@ class TuyaCipher:
             return 15
         return 0
 
-    def decrypt(self, command: "Message", data: bytes):
+    def decrypt(self, command: Message, data: bytes) -> bytes:
         prefix_size = self.get_prefix_size_and_validate(command, data)
         data = data[prefix_size:]
         decryptor = self.cipher.decryptor()
@@ -370,7 +372,7 @@ class TuyaCipher:
 
         return unpadded_data
 
-    def encrypt(self, command, data):
+    def encrypt(self, command: int, data: bytes) -> bytes:
         encrypted_data = b""
         if data:
             padder = PKCS7(128).padder()
@@ -394,7 +396,7 @@ class TuyaCipher:
 
         return prefix + payload
 
-    def hash(self, data: bytes) -> bytes:
+    def hash(self, data: bytes) -> str:
         digest = Hash(MD5(), backend=openssl_backend)  # noqa: S303
         to_hash = "data={}||lpv={}||{}".format(
             data.decode("ascii"), ".".join(map(str, self.version)), self.key
@@ -404,7 +406,7 @@ class TuyaCipher:
         return intermediate[8:24]
 
 
-def crc(data):
+def crc(data: bytes) -> int:
     """Calculate the Tuya-flavored CRC of some data."""
     c = 0xFFFFFFFF
     for b in data:
@@ -419,7 +421,13 @@ class Message:
     SET_COMMAND = 0x07
     GRATUITOUS_UPDATE = 0x08
 
-    def __init__(self, command, payload=None, sequence=None, encrypt_for=None):
+    def __init__(
+        self,
+        command: int,
+        payload: dict[str, Any] | bytes | None = None,
+        sequence: int | None = None,
+        encrypt_for: TuyaDevice | None = None,
+    ):
         if payload is None:
             payload = b""
         self.payload = payload
@@ -435,7 +443,7 @@ class Message:
             self.device = encrypt_for
             self.encrypt = True
 
-    def __repr__(self):
+    def __repr__(self) -> str:
         return "{}({}, {!r}, {!r}, {})".format(
             self.__class__.__name__,
             hex(self.command),
@@ -444,17 +452,17 @@ class Message:
             f"<Device {self.device}>" if self.device else None,
         )
 
-    def hex(self):
-        return self.bytes().hex()
+    def hex(self) -> str:
+        return self.to_bytes().hex()
 
-    def bytes(self):
-        payload_data = self.payload
-        if isinstance(payload_data, dict):
-            payload_data = json.dumps(payload_data, separators=(",", ":"))
-        if not isinstance(payload_data, bytes):
-            payload_data = payload_data.encode("utf8")
+    def to_bytes(self) -> bytes:
+        if isinstance(self.payload, dict):
+            payload_data = json.dumps(self.payload, separators=(",", ":")).encode("utf-8")
+        elif not isinstance(self.payload, bytes):
+            payload_data = self.payload.encode("utf8")
 
         if self.encrypt:
+            assert self.device
             payload_data = self.device.cipher.encrypt(self.command, payload_data)
 
         payload_size = len(payload_data) + struct.calcsize(MESSAGE_SUFFIX_FORMAT)
@@ -476,7 +484,7 @@ class Message:
     __bytes__ = bytes
 
     @classmethod
-    def from_bytes(cls, data, cipher=None) -> Self:
+    def from_bytes(cls, data: bytes, cipher: TuyaCipher) -> Self:
         try:
             prefix, sequence, command, payload_size = struct.unpack_from(
                 MESSAGE_PREFIX_FORMAT, data
@@ -549,13 +557,13 @@ class TuyaDevice:
 
     def __init__(
         self,
-        unique_id,
-        host,
-        local_key=None,
-        port=6668,
-        gateway_id=None,
-        version=(3, 3),
-        timeout=10,
+        unique_id: str,
+        host: str,
+        local_key: str,
+        port: int = 6668,
+        gateway_id: str | None = None,
+        version: tuple[int, int] = (3, 3),
+        timeout: int = 10,
     ):
         """Initialize the device."""
         self.unique_id = unique_id
@@ -566,27 +574,22 @@ class TuyaDevice:
         self.gateway_id = gateway_id
         self.version = version
         self.timeout = timeout
-        self.last_pong = 0
+        self.last_pong = 0.0
 
         if len(local_key) != 16:
             raise InvalidKey("Local key should be a 16-character string")
 
         self.cipher = TuyaCipher(local_key, self.version)
-        self.writer = None
-        self._handlers = {
-            Message.GET_COMMAND: [self.async_update_state],
-            Message.GRATUITOUS_UPDATE: [self.async_update_state],
-            Message.PING_COMMAND: [self._async_pong_received],
-        }
-        self._futures: dict[str, asyncio.Future] = {}
-        self._dps = {}
+        self.writer: asyncio.StreamWriter | None = None
+        self._futures: dict[int, asyncio.Future[Message]] = {}
+        self._dps: dict[str, Any] = {}
         self._connected = False
         self._connecting_lock = asyncio.Lock()
 
-    def __str__(self):
+    def __str__(self) -> str:
         return f"{self.unique_id} ({self.host}:{self.port})"
 
-    async def async_connect(self):
+    async def async_connect(self) -> None:
         async with self._connecting_lock:
             if self._connected:
                 return
@@ -604,26 +607,26 @@ class TuyaDevice:
             asyncio.ensure_future(self._async_ping())
             asyncio.ensure_future(self.async_get())
 
-    async def async_disconnect(self):
+    async def async_disconnect(self) -> None:
         _LOGGER.debug(f"Disconnected from {self}")
         self._connected = False
         self.last_pong = 0
         if self.writer is not None:
             self.writer.close()
 
-    async def async_get(self):
+    async def async_get(self) -> Message:
         payload = {"gwId": self.gateway_id, "devId": self.unique_id}
         maybe_self = None if self.version < (3, 3) else self
         message = Message(Message.GET_COMMAND, payload, encrypt_for=maybe_self)
         return await self.async_send(message)
 
-    async def async_set(self, dps: dict[str, Any]):
+    async def async_set(self, dps: dict[str, Any]) -> Message:
         t = int(time.time())
         payload = {"devId": self.unique_id, "uid": "", "t": t, "dps": dps}
         message = Message(Message.SET_COMMAND, payload, encrypt_for=self)
-        await self.async_send(message)
+        return await self.async_send(message)
 
-    async def _async_ping(self):
+    async def _async_ping(self) -> None:
         self.last_ping = time.time()
         maybe_self = None if self.version < (3, 3) else self
         message = Message(Message.PING_COMMAND, sequence=0, encrypt_for=maybe_self)
@@ -634,14 +637,18 @@ class TuyaDevice:
         else:
             asyncio.ensure_future(self._async_ping())
 
-    async def _async_pong_received(self, message, device):
+    async def _async_pong_received(self, message: Message) -> None:
         self.last_pong = time.time()
 
-    async def async_update_state(self, state_message, _):
+    async def async_update_state(self, state_message: Message) -> None:
         _LOGGER.debug("Received updated state %s: %s", self, state_message)
+        assert isinstance(state_message.payload, dict)
         self._dps.update(state_message.payload["dps"])
         self.state = self._handle_state_update(self._dps)
         _LOGGER.debug("New vacuum state %s: %s", self, self.state)
+
+    def _handle_state_update(self, dps: dict[str, Any]) -> Any:
+        raise NotImplementedError
 
     async def _async_handle_message(self) -> None:
         try:
@@ -659,8 +666,13 @@ class TuyaDevice:
             _LOGGER.error(f"Failed to decrypt message from {self}")
         else:
             _LOGGER.debug(f"Received message from {self}: {message}")
-            for c in self._handlers.get(message.command, []):
-                asyncio.ensure_future(c(message, self))
+
+            if message.command in (Message.GET_COMMAND, Message.GRATUITOUS_UPDATE):
+                await self.async_update_state(message)
+
+            elif message.command == Message.PING_COMMAND:
+                await self._async_pong_received(message)
+
             if future := self._futures.pop(message.sequence, None):
                 future.set_result(message)
 
@@ -671,7 +683,8 @@ class TuyaDevice:
         _LOGGER.debug(f"Sending to {self}: {message}")
         fut = self._futures[message.sequence] = asyncio.Future()
         try:
-            self.writer.write(message.bytes())
+            assert self.writer
+            self.writer.write(message.to_bytes())
         except (TimeoutError, OSError) as e:
             if retries == 0:
                 raise ConnectionException(f"Failed to send data to {self}") from e

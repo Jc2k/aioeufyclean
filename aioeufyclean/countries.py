@@ -191,7 +191,7 @@ COUNTRIES = {v["country"]: v for v in _COUNTRIES}
 
 
 def region_for_country(country: str) -> str:
-    return COUNTRIES.get(country).get("region", "EU")
+    return COUNTRIES.get(country, {}).get("region", "EU")
 
 
 def region_for_phone_code(phone_code: str) -> str:

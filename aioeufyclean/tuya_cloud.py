@@ -14,6 +14,7 @@ import string
 import time
 import uuid
 from hashlib import md5, sha256
+from typing import Any
 
 import aiohttp
 from cryptography.hazmat.backends.openssl import backend as openssl_backend
@@ -119,7 +120,7 @@ class TuyaAPISession:
         )
 
     @staticmethod
-    def get_signature(query_params: dict, encoded_post_data: str) -> str:
+    def get_signature(query_params: dict[str, str], encoded_post_data: str) -> str:
         query_params = query_params.copy()
         if encoded_post_data:
             query_params["postData"] = encoded_post_data
@@ -139,11 +140,11 @@ class TuyaAPISession:
     async def _request(
         self,
         action: str,
-        version="1.0",
-        data: dict | None = None,
-        query_params: dict | None = None,
-        _requires_session=True,
-    ):
+        version: str = "1.0",
+        data: dict[str, str] | None = None,
+        query_params: dict[str, str] | None = None,
+        _requires_session: bool = True,
+    ) -> Any:
         if not self.session_id and _requires_session:
             await self.acquire_session()
 
@@ -168,19 +169,21 @@ class TuyaAPISession:
             data={"postData": encoded_post_data} if encoded_post_data else None,
             raise_for_status=True,
         )
-        data = await resp.json()
-        if "result" not in data:
-            raise Exception(f"No 'result' key in the response - the entire response is {data}.")
-        return data["result"]
+        resp_json = await resp.json()
+        if "result" not in resp_json:
+            raise Exception(
+                f"No 'result' key in the response - the entire response is {resp_json}."
+            )
+        return resp_json["result"]
 
-    async def request_token(self, username, country_code):
+    async def request_token(self, username: str, country_code: str) -> Any:
         return await self._request(
             action="tuya.m.user.uid.token.create",
             data={"uid": username, "countryCode": country_code},
             _requires_session=False,
         )
 
-    def determine_password(self, username: str):
+    def determine_password(self, username: str) -> str:
         new_uid = username
         padded_size = 16 * math.ceil(len(new_uid) / 16)
         password_uid = new_uid.zfill(padded_size)
@@ -189,7 +192,7 @@ class TuyaAPISession:
         encrypted_uid += encryptor.finalize()
         return md5(encrypted_uid.hex().upper().encode("utf-8")).hexdigest()
 
-    async def request_session(self, username, country_code):
+    async def request_session(self, username: str, country_code: str) -> Any:
         password = self.determine_password(username)
         token_response = await self.request_token(username, country_code)
         encrypted_password = unpadded_rsa(
@@ -212,13 +215,10 @@ class TuyaAPISession:
             _requires_session=False,
         )
 
-    async def acquire_session(self):
+    async def acquire_session(self) -> None:
         session_response = await self.request_session(self.username, self.country_code)
         self.session_id = self.default_query_params["sid"] = session_response["sid"]
         self.base_url = session_response["domain"]["mobileApiUrl"]
 
-    async def list_homes(self):
-        return await self._request(action="tuya.m.location.list", version="2.1")
-
-    def get_device(self, device_id: str):
+    def get_device(self, device_id: str) -> Any:
         return self._request(action="tuya.m.device.get", version="1.0", data={"devId": device_id})

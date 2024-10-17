@@ -17,6 +17,7 @@ import json
 import logging
 from dataclasses import dataclass
 from enum import StrEnum
+from typing import Any
 
 from .tuya import TuyaDevice
 
@@ -102,7 +103,7 @@ class VacuumDevice(TuyaDevice):
     ERROR_CODE = "106"
     CONSUMABLE = "116"
 
-    def _handle_state_update(self, payload: dict) -> VacuumState:
+    def _handle_state_update(self, payload: dict[str, Any]) -> VacuumState:
         if payload.get(self.ERROR_CODE) != 0:
             state = State.ERROR
         elif payload.get(self.POWER) == "1" or payload.get(self.WORK_STATUS) in (
@@ -144,7 +145,7 @@ class VacuumDevice(TuyaDevice):
 
         return vacuum_state
 
-    async def async_start(self):
+    async def async_start(self) -> None:
         await self.async_set({self.WORK_MODE: str(WorkMode.AUTO)})
 
     async def async_pause(self) -> None:
