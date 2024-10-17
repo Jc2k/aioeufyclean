@@ -586,10 +586,21 @@ class TuyaDevice:
         self._dps: dict[str, Any] = {}
         self._connected = False
         self._connecting_lock = asyncio.Lock()
+        self._availability_callbacks: set[Callable[[bool], None]] = set()
         self._state_callbacks: set[Callable[[Any], None]] = set()
 
     def __str__(self) -> str:
         return f"{self.unique_id} ({self.host}:{self.port})"
+
+    def async_add_availability_callback(
+        self, callback: Callable[[Any], None]
+    ) -> Callable[[], None]:
+        self._availability_callbacks.add(callback)
+
+        def _() -> None:
+            self._availability_callbacks.discard(callback)
+
+        return _
 
     def async_add_state_callback(self, callback: Callable[[Any], None]) -> Callable[[], None]:
         self._state_callbacks.add(callback)
@@ -612,7 +623,8 @@ class TuyaDevice:
                 raise ConnectionTimeoutException("Connection timed out") from e
 
             self._connected = True
-
+            for callback in self._availability_callbacks:
+                callback(True)
             asyncio.ensure_future(self._async_handle_message())
             asyncio.ensure_future(self._async_ping())
             asyncio.ensure_future(self.async_get())
@@ -620,6 +632,8 @@ class TuyaDevice:
     async def async_disconnect(self) -> None:
         _LOGGER.debug(f"Disconnected from {self}")
         self._connected = False
+        for callback in self._availability_callbacks:
+            callback(False)
         self.last_pong = 0
         if self.writer is not None:
             self.writer.close()
