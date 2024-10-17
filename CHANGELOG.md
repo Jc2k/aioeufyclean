@@ -2,6 +2,33 @@
 
 
 
+## v0.2.0 (2024-10-17)
+
+### Chore
+
+* chore: remove unused logging ([`5898e9a`](https://github.com/Jc2k/aioeufyclean/commit/5898e9aca2a56a18dac8063ec4423f08be1707d0))
+
+* chore: more clean up ([`c859d44`](https://github.com/Jc2k/aioeufyclean/commit/c859d4498e442473a8986b7504e5f8ea8f5ff9c6))
+
+* chore: remove unused code ([`9bc149a`](https://github.com/Jc2k/aioeufyclean/commit/9bc149a4b1eec7da7d86a9d085fdf73cc5633b5b))
+
+* chore: more README updates ([`6f3613d`](https://github.com/Jc2k/aioeufyclean/commit/6f3613da1d9ce2dd3fe95763d443a3874e7068f5))
+
+* chore: tweak README ([`b708d1e`](https://github.com/Jc2k/aioeufyclean/commit/b708d1ec7317ab5bdbee273180db1776156d7936))
+
+### Feature
+
+* feat: async_add_availability_callback ([`19c5856`](https://github.com/Jc2k/aioeufyclean/commit/19c5856c0989640783d03a3f22982d510b9a985a))
+
+* feat: async_add_state_callback ([`6d64385`](https://github.com/Jc2k/aioeufyclean/commit/6d64385a39b863e2e32e9c9b5a2500e2f19e67e5))
+
+* feat: add spot clean ([`cf821d7`](https://github.com/Jc2k/aioeufyclean/commit/cf821d7209d248436b175696c6810200c725a547))
+
+### Fix
+
+* fix: incorrect isort configuration ([`1746be8`](https://github.com/Jc2k/aioeufyclean/commit/1746be800de83e09893f931befdb557b7b40cd72))
+
+
 ## v0.1.0 (2024-10-17)
 
 ### Chore
