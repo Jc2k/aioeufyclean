@@ -162,3 +162,6 @@ class VacuumDevice(TuyaDevice):
 
     async def async_set_fan_speed(self, clean_speed: CleanSpeed) -> None:
         await self.async_set({DataPoint.CLEAN_SPEED: str(clean_speed)})
+
+    async def async_clean_spot(self) -> None:
+        await self.async_set({DataPoint.WORK_MODE: WorkMode.SPOT})
