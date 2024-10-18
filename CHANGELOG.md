@@ -2,6 +2,17 @@
 
 
 
+## v0.3.0 (2024-10-18)
+
+### Chore
+
+* chore: start refactoring ping into main event loop ([`75b94bd`](https://github.com/Jc2k/aioeufyclean/commit/75b94bd3c6a6d42b0fa736d53af47dc93114049f))
+
+### Feature
+
+* feat: support switches, towards a background task for use with config_entry.async_create_background_task ([`16ad90f`](https://github.com/Jc2k/aioeufyclean/commit/16ad90fc18134b99b4cc7265273813740d2971b8))
+
+
 ## v0.2.0 (2024-10-17)
 
 ### Chore
