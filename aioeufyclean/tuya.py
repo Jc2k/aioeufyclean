@@ -627,7 +627,8 @@ class TuyaDevice:
             self._connected = True
             for callback in self._availability_callbacks:
                 callback(True)
-            asyncio.ensure_future(self._async_ping())
+
+        await self._async_ping()
 
     def _async_disconnect(self) -> None:
         _LOGGER.debug(f"Disconnected from {self}")
@@ -643,25 +644,19 @@ class TuyaDevice:
         payload = {"gwId": self.gateway_id, "devId": self.unique_id}
         maybe_self = None if self.version < (3, 3) else self
         message = Message(Message.GET_COMMAND, payload, encrypt_for=maybe_self)
-        return await self.async_send(message)
+        return await self.async_call(message)
 
     async def async_set(self, dps: dict[str, Any]) -> Message:
         t = int(time.time())
         payload = {"devId": self.unique_id, "uid": "", "t": t, "dps": dps}
         message = Message(Message.SET_COMMAND, payload, encrypt_for=self)
-        return await self.async_send(message)
+        return await self.async_call(message)
 
     async def _async_ping(self) -> None:
         self.last_ping = time.time()
         maybe_self = None if self.version < (3, 3) else self
         message = Message(Message.PING_COMMAND, sequence=0, encrypt_for=maybe_self)
         await self.async_send(message)
-        await asyncio.sleep(self.PING_INTERVAL)
-        if self.last_pong < self.last_ping:
-            self._async_disconnect()
-
-    async def _async_pong_received(self, message: Message) -> None:
-        self.last_pong = time.time()
 
     async def async_update_state(self, state_message: Message) -> None:
         _LOGGER.debug("Received updated state %s: %s", self, state_message)
@@ -703,50 +698,70 @@ class TuyaDevice:
         while True:
             await self.async_connect()
 
-            asyncio.ensure_future(self._async_ping())
-
             sleep_fut = asyncio.create_task(asyncio.sleep(self.PING_INTERVAL))
             message_fut = asyncio.create_task(self._async_read_message())
 
-            while self._connected:
-                (done, pending) = await asyncio.wait(
-                    [message_fut, sleep_fut], return_when=asyncio.FIRST_COMPLETED
-                )
+            try:
+                while self._connected:
+                    (done, pending) = await asyncio.wait(
+                        [message_fut, sleep_fut], return_when=asyncio.FIRST_COMPLETED
+                    )
 
-                if message_fut in done:
-                    message = await message_fut
+                    if message_fut in done:
+                        message = await message_fut
 
-                    if not message:
-                        break
+                        if not message:
+                            break
 
-                    if message.command in (Message.GET_COMMAND, Message.GRATUITOUS_UPDATE):
-                        await self.async_update_state(message)
+                        if message.command in (Message.GET_COMMAND, Message.GRATUITOUS_UPDATE):
+                            await self.async_update_state(message)
 
-                    elif message.command == Message.PING_COMMAND:
-                        await self._async_pong_received(message)
+                        elif message.command == Message.PING_COMMAND:
+                            self.last_pong = time.time()
 
-                    if future := self._futures.pop(message.sequence, None):
-                        future.set_result(message)
+                        if future := self._futures.pop(message.sequence, None):
+                            future.set_result(message)
 
-                    message_fut = asyncio.create_task(self._async_read_message())
+                        message_fut = asyncio.create_task(self._async_read_message())
 
-                if sleep_fut in done:
-                    asyncio.ensure_future(self._async_ping())
-                    sleep_fut = asyncio.create_task(asyncio.sleep(self.PING_INTERVAL))
+                    if sleep_fut in done:
+                        if self.last_pong < self.last_ping:
+                            self._async_disconnect()
+                            break
+                        await sleep_fut
+                        await self._async_ping()
+                        sleep_fut = asyncio.create_task(asyncio.sleep(self.PING_INTERVAL))
+            finally:
+                if not message_fut.done():
+                    message_fut.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await message_fut
 
-    async def async_send(self, message: Message, retries: int = 4) -> Message:
+                if not sleep_fut.done():
+                    sleep_fut.cancel()
+                with contextlib.suppress(asyncio.CancelledError):
+                    await message_fut
+
+    async def async_send(self, message: Message, retries: int = 4) -> None:
         await self.async_connect()
         _LOGGER.debug(f"Sending to {self}: {message}")
-        fut = self._futures[message.sequence] = asyncio.Future()
         try:
             assert self.writer
             self.writer.write(message.to_bytes())
         except (TimeoutError, OSError) as e:
-            self._futures.pop(message.sequence, None)
             if retries == 0:
                 raise ConnectionException(f"Failed to send data to {self}") from e
             await self.async_connect()
             await self.async_send(message, retries=retries - 1)
+
+    async def async_call(self, message: Message, retries: int = 4) -> Message:
+        fut = self._futures[message.sequence] = asyncio.Future()
+
+        try:
+            await self.async_send(message, retries=retries)
+        except ConnectionException:
+            self._futures.pop(message.sequence, None)
+
         try:
             return await asyncio.wait_for(fut, 10)
         except TimeoutError:
