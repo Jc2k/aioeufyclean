@@ -2,6 +2,13 @@
 
 
 
+## v0.3.1 (2024-10-18)
+
+### Fix
+
+* fix: improve stability after ping refactor ([`d0ff3b2`](https://github.com/Jc2k/aioeufyclean/commit/d0ff3b2c5a848b1d292f249cf38f238fec050f08))
+
+
 ## v0.3.0 (2024-10-18)
 
 ### Chore
