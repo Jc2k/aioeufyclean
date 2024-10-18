@@ -55,6 +55,7 @@ from cryptography.hazmat.primitives.padding import PKCS7
 
 from .exceptions import (
     ConnectionException,
+    ConnectionFailed,
     ConnectionTimeoutException,
     InvalidKey,
     InvalidMessage,
@@ -617,10 +618,17 @@ class TuyaDevice:
             if self._connected:
                 return
 
+            _LOGGER.debug("Starting connection to %s:%s", self.host, self.port)
+
             try:
                 self.reader, self.writer = await asyncio.wait_for(
                     asyncio.open_connection(host=self.host, port=self.port), self.timeout
                 )
+            except ConnectionRefusedError as e:
+                raise ConnectionFailed(
+                    f"Could not start connection to {self.host}:{self.port} - "
+                    "device is offline or ip is incorrect"
+                ) from e
             except TimeoutError as e:
                 raise ConnectionTimeoutException("Connection timed out") from e
 
@@ -696,7 +704,11 @@ class TuyaDevice:
 
     async def async_process_messages(self) -> None:
         while True:
-            await self.async_connect()
+            try:
+                await self.async_connect()
+            except ConnectionFailed:
+                _LOGGER.debug("Could not connect to %s:%s", self.host, self.port)
+                await asyncio.sleep(10)
 
             sleep_fut = asyncio.create_task(asyncio.sleep(self.PING_INTERVAL))
             message_fut = asyncio.create_task(self._async_read_message())

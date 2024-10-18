@@ -1,4 +1,4 @@
-from .device import VacuumDevice, VacuumState
+from .device import BinarySensor, Sensor, Switch, VacuumDevice, VacuumState
 from .eufy_cloud import VacuumCloudDiscovery, get_cloud_vacuums
 from .exceptions import (
     AuthenticationFailed,
@@ -24,4 +24,7 @@ __all__ = [
     "VacuumCloudDiscovery",
     "VacuumDevice",
     "VacuumState",
+    "Switch",
+    "BinarySensor",
+    "Sensor",
 ]
