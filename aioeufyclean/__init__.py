@@ -11,7 +11,7 @@ from .exceptions import (
     InvalidMessage,
     MessageDecodeFailed,
 )
-from .metadata import VACUUM_INFO, VacuumInfo
+from .metadata import VACUUM_INFO, VACUUM_MODEL_NAME_TO_ID, VacuumInfo
 
 __all__ = [
     "EufyCleanException",
@@ -32,4 +32,5 @@ __all__ = [
     "CleanSpeed",
     "VACUUM_INFO",
     "VacuumInfo",
+    "VACUUM_MODEL_NAME_TO_ID",
 ]
