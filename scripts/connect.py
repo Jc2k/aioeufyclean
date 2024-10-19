@@ -27,8 +27,6 @@ async def main():
 
     task = asyncio.create_task(vd.async_process_messages())
 
-    await vd.async_get()
-
     # await vd.async_set_switch(aioeufyclean.Switch.BOOST_IQ, False)
 
     await task

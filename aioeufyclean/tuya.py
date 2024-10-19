@@ -637,7 +637,6 @@ class TuyaDevice:
                 callback(True)
 
         await self._async_ping()
-        await self.async_poll()
 
     def _async_disconnect(self) -> None:
         _LOGGER.debug(f"Disconnected from {self}")
@@ -710,6 +709,8 @@ class TuyaDevice:
             except ConnectionFailed:
                 _LOGGER.debug("Could not connect to %s:%s", self.host, self.port)
                 await asyncio.sleep(10)
+
+            await self.async_poll()
 
             sleep_fut = asyncio.create_task(asyncio.sleep(self.PING_INTERVAL))
             message_fut = asyncio.create_task(self._async_read_message())
