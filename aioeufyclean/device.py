@@ -102,7 +102,9 @@ class VacuumDevice(TuyaDevice):
         version: tuple[int, int] = (3, 3),
         timeout: int = 10,
     ):
+        self.model_id = model_id
         self.device_info = VACUUM_INFO[model_id]
+
         super().__init__(unique_id, host, local_key, port, gateway_id, version, timeout)
 
     def _handle_state_update(self, payload: dict[str, Any]) -> VacuumState:
