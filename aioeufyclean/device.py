@@ -18,29 +18,10 @@ from dataclasses import dataclass
 from enum import StrEnum
 from typing import Any
 
+from aioeufyclean.metadata import VACUUM_INFO
+
+from .const import CleanSpeed, WorkMode
 from .tuya import TuyaDevice
-
-
-class WorkMode(StrEnum):
-    AUTO = "auto"
-    NO_SWEEP = "Nosweep"
-    SMALL_ROOM = "SmallRoom"
-    EDGE = "Edge"
-    SPOT = "Spot"
-
-
-class Direction(StrEnum):
-    LEFT = "left"
-    RIGHT = "right"
-    FORWARD = "forward"
-    BACKWARD = "backward"
-
-
-class CleanSpeed(StrEnum):
-    NO_SUCTION = "No_suction"
-    STANDARD = "Standard"
-    BOOST_IQ = "Boost_IQ"
-    MAX = "Max"
 
 
 class ErrorCode(StrEnum):
@@ -102,7 +83,6 @@ class DataPoint:
 class VacuumState:
     state: State
     clean_speed: CleanSpeed
-    clean_speed_list: list[CleanSpeed]
     sensors: dict[Sensor, str | int | float]
     binary_sensors: dict[BinarySensor, bool]
     switches: dict[Switch, bool]
@@ -110,6 +90,20 @@ class VacuumState:
 
 class VacuumDevice(TuyaDevice):
     """Represents a generic Eufy Robovac."""
+
+    def __init__(
+        self,
+        unique_id: str,
+        host: str,
+        local_key: str,
+        model_id: str,
+        port: int = 6668,
+        gateway_id: str | None = None,
+        version: tuple[int, int] = (3, 3),
+        timeout: int = 10,
+    ):
+        self.device_info = VACUUM_INFO[model_id]
+        super().__init__(unique_id, host, local_key, port, gateway_id, version, timeout)
 
     def _handle_state_update(self, payload: dict[str, Any]) -> VacuumState:
         if payload.get(DataPoint.ERROR_CODE) != 0:
@@ -127,12 +121,10 @@ class VacuumDevice(TuyaDevice):
             state = State.CLEANING
 
         clean_speed = CleanSpeed(payload[DataPoint.CLEAN_SPEED])
-        clean_speed_list = [clean_speed]
 
         vacuum_state = VacuumState(
             state=state,
             clean_speed=clean_speed,
-            clean_speed_list=clean_speed_list,
             sensors={},
             binary_sensors={},
             switches={},

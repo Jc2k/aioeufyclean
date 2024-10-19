@@ -1,3 +1,4 @@
+from .const import CleanSpeed
 from .device import BinarySensor, Sensor, Switch, VacuumDevice, VacuumState
 from .eufy_cloud import VacuumCloudDiscovery, get_cloud_vacuums
 from .exceptions import (
@@ -10,6 +11,7 @@ from .exceptions import (
     InvalidMessage,
     MessageDecodeFailed,
 )
+from .metadata import VACUUM_INFO, VacuumInfo
 
 __all__ = [
     "EufyCleanException",
@@ -27,4 +29,7 @@ __all__ = [
     "Switch",
     "BinarySensor",
     "Sensor",
+    "CleanSpeed",
+    "VACUUM_INFO",
+    "VacuumInfo",
 ]

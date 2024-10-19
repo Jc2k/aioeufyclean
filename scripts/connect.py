@@ -21,11 +21,13 @@ async def main():
     ip_addresss = os.environ["IP_ADDRESS"]
     local_key = os.environ["LOCAL_KEY"]
 
-    vd = aioeufyclean.VacuumDevice(device_id, ip_addresss, local_key)
+    vd = aioeufyclean.VacuumDevice(device_id, ip_addresss, local_key, "T2262")
     vd.async_add_availability_callback(_availability_callback)
     vd.async_add_state_callback(_state_callback)
 
     task = asyncio.create_task(vd.async_process_messages())
+
+    await vd.async_get()
 
     # await vd.async_set_switch(aioeufyclean.Switch.BOOST_IQ, False)
 
