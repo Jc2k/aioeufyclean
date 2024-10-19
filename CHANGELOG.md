@@ -2,6 +2,19 @@
 
 
 
+## v0.4.0 (2024-10-19)
+
+### Chore
+
+* chore: add script that shows usage ([`51a35af`](https://github.com/Jc2k/aioeufyclean/commit/51a35affb51c29869cd77a58a12a7932ad722f94))
+
+### Feature
+
+* feat: can now get model_id ([`b66b371`](https://github.com/Jc2k/aioeufyclean/commit/b66b371019897854b7432cf0fd96283079b26307))
+
+* feat: clean_speed_list is now correct based on model id ([`97a80d2`](https://github.com/Jc2k/aioeufyclean/commit/97a80d205e78a45a94001cb7b82b67140b88d9d5))
+
+
 ## v0.3.1 (2024-10-18)
 
 ### Fix
