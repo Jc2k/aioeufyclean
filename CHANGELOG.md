@@ -2,6 +2,23 @@
 
 
 
+## v0.4.1 (2024-10-19)
+
+### Chore
+
+* chore: add VACUUM_MODEL_NAME_TO_ID to exports ([`7d0e168`](https://github.com/Jc2k/aioeufyclean/commit/7d0e168abc283571828c978ad31e3f5447305eb0))
+
+### Fix
+
+* fix: don&#39;t poll inside event loop ([`16bd311`](https://github.com/Jc2k/aioeufyclean/commit/16bd3113caa4d8606e36e9c9bc04f58db110da61))
+
+* fix: always poll on reconnect ([`a7f6395`](https://github.com/Jc2k/aioeufyclean/commit/a7f63952eaef9007442211ed8935f23d26d44938))
+
+* fix: always poll on reconnect ([`388f665`](https://github.com/Jc2k/aioeufyclean/commit/388f66554c83c7d1abbc9b81adde141a417e8476))
+
+* fix: add missing files ([`a4f5376`](https://github.com/Jc2k/aioeufyclean/commit/a4f5376fd1c41fb55c17d261d27d24f1459bc0b1))
+
+
 ## v0.4.0 (2024-10-19)
 
 ### Chore
