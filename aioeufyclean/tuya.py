@@ -637,6 +637,7 @@ class TuyaDevice:
                 callback(True)
 
         await self._async_ping()
+        await self.async_poll()
 
     def _async_disconnect(self) -> None:
         _LOGGER.debug(f"Disconnected from {self}")
@@ -648,11 +649,11 @@ class TuyaDevice:
             self.writer.close()
             self.writer = None
 
-    async def async_get(self) -> Message:
+    async def async_poll(self) -> None:
         payload = {"gwId": self.gateway_id, "devId": self.unique_id}
         maybe_self = None if self.version < (3, 3) else self
         message = Message(Message.GET_COMMAND, payload, encrypt_for=maybe_self)
-        return await self.async_call(message)
+        await self.async_call(message)
 
     async def async_set(self, dps: dict[str, Any]) -> Message:
         t = int(time.time())
