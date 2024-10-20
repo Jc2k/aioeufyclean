@@ -586,7 +586,7 @@ class TuyaDevice:
         self.cipher = TuyaCipher(local_key, self.version)
         self.writer: asyncio.StreamWriter | None = None
         self._futures: dict[int, asyncio.Future[Message]] = {}
-        self._dps: dict[str, Any] = {}
+        self._dps: dict[str, str | int | float] = {}
         self._connected = False
         self._connecting_lock = asyncio.Lock()
         self._availability_callbacks: set[Callable[[bool], None]] = set()

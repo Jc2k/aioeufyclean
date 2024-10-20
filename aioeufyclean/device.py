@@ -16,7 +16,6 @@ import base64
 import json
 from dataclasses import dataclass
 from enum import StrEnum
-from typing import Any
 
 from aioeufyclean.metadata import VACUUM_INFO
 
@@ -64,22 +63,6 @@ class Switch(StrEnum):
 
 
 @dataclass
-class DataPoint:
-    POWER = "1"
-    PLAY_PAUSE = "2"
-    DIRECTION = "3"
-    WORK_MODE = "5"
-    WORK_STATUS = "15"
-    GO_HOME = "101"
-    CLEAN_SPEED = "102"
-    FIND_ROBOT = "103"
-    BATTERY_LEVEL = "104"
-    ERROR_CODE = "106"
-    CONSUMABLE = "116"
-    BOOST_IQ = "118"
-
-
-@dataclass
 class VacuumState:
     state: State
     clean_speed: CleanSpeed
@@ -107,22 +90,24 @@ class VacuumDevice(TuyaDevice):
 
         super().__init__(unique_id, host, local_key, port, gateway_id, version, timeout)
 
-    def _handle_state_update(self, payload: dict[str, Any]) -> VacuumState:
-        if payload.get(DataPoint.ERROR_CODE) != 0:
+    def _handle_state_update(self, payload: dict[str, str | int | float]) -> VacuumState:
+        if payload.get(self.device_info.error_code) != 0:
             state = State.ERROR
-        elif payload.get(DataPoint.POWER) == "1" or payload.get(DataPoint.WORK_STATUS) in (
+        elif payload.get(self.device_info.power) == "1" or payload.get(
+            self.device_info.work_status
+        ) in (
             "Charging",
             "completed",
         ):
             state = State.DOCKED
-        elif payload.get(DataPoint.WORK_STATUS) in ("Recharge",):
+        elif payload.get(self.device_info.work_status) in ("Recharge",):
             state = State.RETURNING
-        elif payload.get(DataPoint.WORK_STATUS) in ("Sleeping", "standby"):
+        elif payload.get(self.device_info.work_status) in ("Sleeping", "standby"):
             state = State.IDLE
         else:
             state = State.CLEANING
 
-        clean_speed = CleanSpeed(payload[DataPoint.CLEAN_SPEED])
+        clean_speed = CleanSpeed(self.device_info.clean_speed)
 
         vacuum_state = VacuumState(
             state=state,
@@ -132,51 +117,54 @@ class VacuumDevice(TuyaDevice):
             switches={},
         )
 
-        if DataPoint.BATTERY_LEVEL in payload:
-            vacuum_state.sensors[Sensor.BATTERY] = payload[DataPoint.BATTERY_LEVEL]
+        if self.device_info.battery_level and self.device_info.battery_level in payload:
+            if battery_level := payload.get(self.device_info.battery_level):
+                vacuum_state.sensors[Sensor.BATTERY] = int(battery_level)
 
-        if consumable_json := payload.get(DataPoint.CONSUMABLE):
-            if (
-                duration := json.loads(base64.b64decode(consumable_json))
-                .get("consumable", {})
-                .get("duration", {})
-            ):
-                # TODO: What are SP, TR and BatteryStatus?
-                if "FM" in duration:
-                    vacuum_state.sensors[Sensor.FILTER_LIFE] = duration["FM"]
-                if "RB" in duration:
-                    vacuum_state.sensors[Sensor.ROLLING_BRUSH_LIFE] = duration["RB"]
-                if "SB" in duration:
-                    vacuum_state.sensors[Sensor.SIDE_BRUSH_LIFE] = duration["SB"]
-                if "SS" in duration:
-                    vacuum_state.sensors[Sensor.SENSOR_CLEAN_LIFE] = duration["SS"]
+        if self.device_info.consumable:
+            if consumable_json := payload.get(self.device_info.consumable):
+                if (
+                    duration := json.loads(base64.b64decode(str(consumable_json)))
+                    .get("consumable", {})
+                    .get("duration", {})
+                ):
+                    # TODO: What are SP, TR and BatteryStatus?
+                    if "FM" in duration:
+                        vacuum_state.sensors[Sensor.FILTER_LIFE] = duration["FM"]
+                    if "RB" in duration:
+                        vacuum_state.sensors[Sensor.ROLLING_BRUSH_LIFE] = duration["RB"]
+                    if "SB" in duration:
+                        vacuum_state.sensors[Sensor.SIDE_BRUSH_LIFE] = duration["SB"]
+                    if "SS" in duration:
+                        vacuum_state.sensors[Sensor.SENSOR_CLEAN_LIFE] = duration["SS"]
 
-        if boost_iq := payload.get(DataPoint.BOOST_IQ):
-            vacuum_state.switches[Switch.BOOST_IQ] = boost_iq
+        if self.device_info.boost_iq:
+            if boost_iq := payload.get(self.device_info.boost_iq):
+                vacuum_state.switches[Switch.BOOST_IQ] = bool(boost_iq)
 
         return vacuum_state
 
     async def async_start(self) -> None:
-        await self.async_set({DataPoint.WORK_MODE: str(WorkMode.AUTO)})
+        await self.async_set({self.device_info.work_mode: str(WorkMode.AUTO)})
 
     async def async_pause(self) -> None:
-        await self.async_set({DataPoint.PLAY_PAUSE: False})
+        await self.async_set({self.device_info.play_pause: False})
 
     async def async_stop(self) -> None:
-        await self.async_set({DataPoint.PLAY_PAUSE: False})
+        await self.async_set({self.device_info.play_pause: False})
 
     async def async_return_to_base(self) -> None:
-        await self.async_set({DataPoint.GO_HOME: True})
+        await self.async_set({self.device_info.go_home: True})
 
     async def async_locate(self) -> None:
-        await self.async_set({DataPoint.FIND_ROBOT: True})
+        await self.async_set({self.device_info.find_robot: True})
 
     async def async_set_fan_speed(self, clean_speed: CleanSpeed) -> None:
-        await self.async_set({DataPoint.CLEAN_SPEED: str(clean_speed)})
+        await self.async_set({self.device_info.clean_speed: str(clean_speed)})
 
     async def async_clean_spot(self) -> None:
-        await self.async_set({DataPoint.WORK_MODE: WorkMode.SPOT})
+        await self.async_set({self.device_info.work_mode: WorkMode.SPOT})
 
     async def async_set_switch(self, switch: Switch, value: bool) -> None:
-        if switch == Switch.BOOST_IQ:
-            await self.async_set({DataPoint.BOOST_IQ: value})
+        if self.device_info.boost_iq and switch == Switch.BOOST_IQ:
+            await self.async_set({self.device_info.boost_iq: value})
