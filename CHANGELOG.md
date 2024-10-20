@@ -2,6 +2,13 @@
 
 
 
+## v0.4.2 (2024-10-20)
+
+### Fix
+
+* fix: make all opcodes go through metadata.py ([`8973a73`](https://github.com/Jc2k/aioeufyclean/commit/8973a739f7dc8b582a03c865af0f1834adc2ca34))
+
+
 ## v0.4.1 (2024-10-19)
 
 ### Chore
