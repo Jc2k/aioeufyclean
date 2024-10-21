@@ -21,6 +21,27 @@ class LocalDiscovery:
     ip: str
 
 
+def _payload_to_discovery(payload: bytes) -> LocalDiscovery | None:
+    try:
+        decoded = json.loads(payload.decode("utf-8"))
+    except ValueError:
+        return None
+
+    if not isinstance(decoded, dict):
+        return None
+
+    if not (device_id := decoded.get("gwId")):
+        return None
+
+    if not (ip := decoded.get("ip")):
+        return None
+
+    return LocalDiscovery(
+        device_id=device_id,
+        ip=ip,
+    )
+
+
 async def discover() -> AsyncIterator[LocalDiscovery]:
     loop = asyncio.get_running_loop()
 
@@ -46,8 +67,8 @@ async def discover() -> AsyncIterator[LocalDiscovery]:
             )
             if datagram in done:
                 data, _ = await datagram
-                decoded = json.loads(data.decode("utf-8"))
-                yield LocalDiscovery(ip=decoded["ip"], device_id=decoded["gwId"])
+                if discovery := _payload_to_discovery(data):
+                    yield discovery
                 datagram = asyncio.create_task(loop.sock_recvfrom(listener, 2048))
 
             if datagram_aes in done:
@@ -55,8 +76,10 @@ async def discover() -> AsyncIterator[LocalDiscovery]:
                 decryptor = cipher.decryptor()
                 padded_data = decryptor.update(data_aes[20:-8]) + decryptor.finalize()
                 data = padded_data[: -ord(padded_data[len(padded_data) - 1 :])]
-                decoded = json.loads(data.decode("utf-8"))
-                yield LocalDiscovery(ip=decoded["ip"], device_id=decoded["gwId"])
+
+                if discovery := _payload_to_discovery(data):
+                    yield discovery
+
                 datagram_aes = asyncio.create_task(loop.sock_recvfrom(listener_aes, 2048))
 
     finally:
