@@ -3,7 +3,7 @@ import contextlib
 import json
 import logging
 import socket
-from collections.abc import AsyncIterator
+from collections.abc import AsyncGenerator
 from dataclasses import dataclass
 from hashlib import md5
 
@@ -42,7 +42,7 @@ def _payload_to_discovery(payload: bytes) -> LocalDiscovery | None:
     )
 
 
-async def discover() -> AsyncIterator[LocalDiscovery]:
+async def discover() -> AsyncGenerator[LocalDiscovery, None]:
     loop = asyncio.get_running_loop()
 
     cipher = Cipher(algorithms.AES(UDP_KEY), modes.ECB(), default_backend())  # noqa: S305
@@ -92,3 +92,17 @@ async def discover() -> AsyncIterator[LocalDiscovery]:
             datagram_aes.cancel()
             with contextlib.suppress(asyncio.CancelledError):
                 await datagram_aes
+
+
+async def find(device_id: str, timeout: int = 10) -> LocalDiscovery | None:
+    try:
+        async with asyncio.timeout(timeout):
+            async with contextlib.aclosing(discover()) as discoveries:
+                async for discovery in discoveries:
+                    if discovery.device_id == device_id:
+                        return discovery
+
+    except TimeoutError:
+        pass
+
+    return None

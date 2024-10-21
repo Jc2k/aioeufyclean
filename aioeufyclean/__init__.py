@@ -1,6 +1,6 @@
 from .const import CleanSpeed
 from .device import BinarySensor, Sensor, Switch, VacuumDevice, VacuumState
-from .discovery import discover
+from .discovery import discover, find
 from .eufy_cloud import VacuumCloudDiscovery, get_cloud_vacuums
 from .exceptions import (
     AuthenticationFailed,
@@ -35,4 +35,5 @@ __all__ = [
     "VacuumInfo",
     "VACUUM_MODEL_NAME_TO_ID",
     "discover",
+    "find",
 ]
