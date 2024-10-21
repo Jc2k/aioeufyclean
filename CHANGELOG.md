@@ -2,6 +2,19 @@
 
 
 
+## v0.5.0 (2024-10-21)
+
+### Chore
+
+* chore: dedupe local discovery payload parsing ([`d62cd50`](https://github.com/Jc2k/aioeufyclean/commit/d62cd50699b1730c0a626c8a23b8d7971ae79c9d))
+
+### Feature
+
+* feat: add local discovery &#39;find&#39; helper ([`90232b5`](https://github.com/Jc2k/aioeufyclean/commit/90232b5cfc674d65fa6874357a532e31a483d6fd))
+
+* feat: add local discovery ([`e17a35b`](https://github.com/Jc2k/aioeufyclean/commit/e17a35b1959c2f66cdc9193ed2758455e07f97ae))
+
+
 ## v0.4.2 (2024-10-20)
 
 ### Fix
