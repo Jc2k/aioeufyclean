@@ -428,7 +428,7 @@ class Message:
         command: int,
         payload: dict[str, Any] | bytes | None = None,
         sequence: int | None = None,
-        encrypt_for: TuyaDevice | None = None,
+        encrypt_for: Connection | None = None,
     ):
         if payload is None:
             payload = b""
@@ -554,7 +554,7 @@ class Message:
         return cls(command, payload, sequence)
 
 
-class TuyaDevice:
+class Connection:
     """Represents a generic Tuya device."""
 
     PING_INTERVAL = 10

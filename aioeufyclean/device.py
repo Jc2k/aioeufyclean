@@ -19,8 +19,8 @@ from enum import StrEnum
 
 from aioeufyclean.metadata import VACUUM_INFO
 
+from .connection import Connection
 from .const import CleanSpeed, WorkMode
-from .tuya import TuyaDevice
 
 
 class ErrorCode(StrEnum):
@@ -71,7 +71,7 @@ class VacuumState:
     switches: dict[Switch, bool]
 
 
-class VacuumDevice(TuyaDevice):
+class VacuumDevice(Connection):
     """Represents a generic Eufy Robovac."""
 
     def __init__(
