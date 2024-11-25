@@ -107,7 +107,7 @@ class VacuumDevice(Connection):
         else:
             state = State.CLEANING
 
-        clean_speed = CleanSpeed(payload.get(self.device_info.clean_speed))
+        clean_speed = CleanSpeed(str(payload.get(self.device_info.clean_speed)))
 
         vacuum_state = VacuumState(
             state=state,
