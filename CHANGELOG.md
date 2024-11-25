@@ -2,6 +2,19 @@
 
 
 
+## v0.5.1 (2024-11-25)
+
+### Chore
+
+* chore: cleanup ([`5a29335`](https://github.com/Jc2k/aioeufyclean/commit/5a29335b5e63236fc59f95fcfd4b89f8043f4994))
+
+### Fix
+
+* fix: restrict type of var from api ([`534e9e4`](https://github.com/Jc2k/aioeufyclean/commit/534e9e4238185c7520623d0764e2b8ca16077328))
+
+* fix: read clean speed from payload instead of using a random const ([`318bb8c`](https://github.com/Jc2k/aioeufyclean/commit/318bb8cf6975a18e4afd96e2be96eb580bcb5fc1))
+
+
 ## v0.5.0 (2024-10-21)
 
 ### Chore
